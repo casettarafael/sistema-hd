@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>HD System - Mobile</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="sidebar-overlay" onclick="toggleMenu()"></div>
+
+    <aside class="sidebar" id="sidebar">
+        <div class="logo">
+            <h2>HD System</h2>
+            <button class="btn-close-sidebar" onclick="toggleMenu()"><i class="fas fa-times"></i></button>
+        </div>
+        <nav>
+            <a href="#" id="menu-dashboard" class="active" onclick="toggleMenu()"><i class="fas fa-chart-line"></i> Dashboard</a>
+            <a href="#" id="menu-vendas" onclick="toggleMenu()"><i class="fas fa-clipboard-check"></i> Nova Venda</a>
+            <a href="#" id="menu-clientes" onclick="toggleMenu()"><i class="fas fa-users"></i> Base de Clientes</a>
+        </nav>
+        <div class="user-info">
+            <p><small>Sistema v3.0 (Mobile)</small><br><strong>HD Aquecedores</strong></p>
+            <button onclick="resetarSistema()" class="btn-reset">(Resetar Dados)</button>
+        </div>
+    </aside>
+
+    <main class="content">
+        
+        <div class="mobile-header">
+            <button class="btn-hamburger" onclick="toggleMenu()"><i class="fas fa-bars"></i></button>
+            <h2>HD Aquecedores</h2>
+        </div>
+
+        <header class="desktop-header">
+            <h1 id="page-title">Visão Geral</h1>
+            <div class="date-display" id="data-hoje"></div>
+        </header>
+
+        <div id="view-dashboard" class="view-section">
+            <section class="kpi-container">
+                <div class="card kpi">
+                    <div class="icon red"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div class="info">
+                        <h3>Vencidos</h3>
+                        <p id="kpi-vencidos">0</p>
+                    </div>
+                </div>
+                <div class="card kpi">
+                    <div class="icon yellow"><i class="fas fa-clock"></i></div>
+                    <div class="info">
+                        <h3>A Vencer (30d)</h3>
+                        <p id="kpi-alerta">0</p>
+                    </div>
+                </div>
+                <div class="card kpi">
+                    <div class="icon green"><i class="fas fa-check-circle"></i></div>
+                    <div class="info">
+                        <h3>Em Dia</h3>
+                        <p id="kpi-ok">0</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="table-container">
+                <div class="table-header">
+                    <h2>Monitoramento (LTV)</h2>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Status</th>
+                                <th>Próxima Manut.</th>
+                                <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-dashboard"></tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+        <div id="view-vendas" class="view-section hidden">
+            <section class="card form-section">
+                <h3><i class="fas fa-plus-circle"></i> Registrar Serviço</h3>
+                <form id="form-venda">
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>Nome do Cliente</label>
+                            <input type="text" id="venda-nome" placeholder="Busque ou digite..." required list="lista-clientes-sugestao">
+                            <datalist id="lista-clientes-sugestao"></datalist>
+                        </div>
+                        <div class="input-group">
+                            <label>WhatsApp</label>
+                            <input type="tel" id="venda-tel" placeholder="11999999999" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Data</label>
+                            <input type="date" id="venda-data" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Serviço</label>
+                            <select id="venda-tipo">
+                                <option value="Manutenção Preventiva">Manutenção Preventiva</option>
+                                <option value="Manutenção Corretiva">Manutenção Corretiva</option>
+                                <option value="Instalação Nova">Instalação Nova</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Valor (R$)</label>
+                            <input type="number" id="venda-valor" step="0.01" inputmode="decimal" placeholder="0,00">
+                        </div>
+                        <div class="input-group full-width">
+                            <label>Observações</label>
+                            <input type="text" id="venda-obs" placeholder="Detalhes técnicos...">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-save">Salvar Registro</button>
+                </form>
+            </section>
+        </div>
+
+        <div id="view-clientes" class="view-section hidden">
+            <section class="table-container">
+                <div class="table-header">
+                    <h2>Clientes</h2>
+                    <input type="text" id="busca-cliente" placeholder="Buscar nome..." onkeyup="filtrarClientes()">
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>WhatsApp</th>
+                                <th>Último Serviço</th>
+                                <th>Histórico</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-clientes-base"></tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+    </main>
+
+    <div id="modal-historico" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-nome-cliente">Histórico</h2>
+                <button onclick="fecharModal()" class="btn-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="client-summary">
+                    <p><strong>WhatsApp:</strong> <span id="modal-tel"></span></p>
+                    <p><strong>Total Gasto:</strong> R$ <span id="modal-total"></span></p>
+                </div>
+                <hr>
+                <h4>Linha do Tempo</h4>
+                <div class="timeline" id="modal-timeline"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
