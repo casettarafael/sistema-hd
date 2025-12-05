@@ -3,9 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HD System - Mobile</title>
+    <title>HD System Ultimate</title>
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -14,17 +18,31 @@
 
     <aside class="sidebar" id="sidebar">
         <div class="logo">
-            <h2>HD System</h2>
+            <h2>HD System <span style="font-size:0.5em; color:var(--accent); vertical-align:super;">PRO</span></h2>
             <button class="btn-close-sidebar" onclick="toggleMenu()"><i class="fas fa-times"></i></button>
         </div>
+        
         <nav>
-            <a href="#" id="menu-dashboard" class="active" onclick="toggleMenu()"><i class="fas fa-chart-line"></i> Dashboard</a>
-            <a href="#" id="menu-vendas" onclick="toggleMenu()"><i class="fas fa-clipboard-check"></i> Nova Venda</a>
-            <a href="#" id="menu-clientes" onclick="toggleMenu()"><i class="fas fa-users"></i> Base de Clientes</a>
+            <a href="#" id="menu-dashboard" class="active"><i class="fas fa-chart-pie"></i> Dashboard</a>
+            <a href="#" id="menu-vendas"><i class="fas fa-plus-circle"></i> Novo Serviço</a>
+            <a href="#" id="menu-clientes"><i class="fas fa-address-book"></i> Clientes</a>
+            <a href="#" id="menu-financeiro"><i class="fas fa-file-invoice-dollar"></i> Recibos</a>
         </nav>
+
+        <div class="theme-switch-wrapper">
+            <label class="theme-switch" for="checkbox">
+                <input type="checkbox" id="checkbox" />
+                <div class="slider round"></div>
+            </label>
+            <em>Modo Escuro</em>
+        </div>
+
         <div class="user-info">
-            <p><small>Sistema v3.0 (Mobile)</small><br><strong>HD Aquecedores</strong></p>
-            <button onclick="resetarSistema()" class="btn-reset">(Resetar Dados)</button>
+            <p><strong>HD Aquecedores</strong></p>
+            <div class="actions">
+                <button onclick="exportarCSV()" class="btn-link"><i class="fas fa-download"></i> Backup Excel</button>
+                <button onclick="resetarSistema()" class="btn-link danger"><i class="fas fa-trash"></i> Reset</button>
+            </div>
         </div>
     </aside>
 
@@ -32,42 +50,52 @@
         
         <div class="mobile-header">
             <button class="btn-hamburger" onclick="toggleMenu()"><i class="fas fa-bars"></i></button>
-            <h2>HD Aquecedores</h2>
+            <h2>HD System</h2>
         </div>
 
         <header class="desktop-header">
-            <h1 id="page-title">Visão Geral</h1>
-            <div class="date-display" id="data-hoje"></div>
+            <div>
+                <h1 id="page-title">Visão Geral</h1>
+                <p class="subtitle">Bem-vindo ao painel de controle.</p>
+            </div>
+            <div class="date-badge" id="data-hoje"></div>
         </header>
 
         <div id="view-dashboard" class="view-section">
             <section class="kpi-container">
-                <div class="card kpi">
-                    <div class="icon red"><i class="fas fa-exclamation-triangle"></i></div>
+                <div class="card kpi kpi-vencido">
+                    <div class="icon"><i class="fas fa-exclamation-circle"></i></div>
                     <div class="info">
                         <h3>Vencidos</h3>
                         <p id="kpi-vencidos">0</p>
                     </div>
                 </div>
-                <div class="card kpi">
-                    <div class="icon yellow"><i class="fas fa-clock"></i></div>
+                <div class="card kpi kpi-alerta">
+                    <div class="icon"><i class="fas fa-clock"></i></div>
                     <div class="info">
                         <h3>A Vencer (30d)</h3>
                         <p id="kpi-alerta">0</p>
                     </div>
                 </div>
-                <div class="card kpi">
-                    <div class="icon green"><i class="fas fa-check-circle"></i></div>
+                <div class="card kpi kpi-receita">
+                    <div class="icon"><i class="fas fa-dollar-sign"></i></div>
                     <div class="info">
-                        <h3>Em Dia</h3>
-                        <p id="kpi-ok">0</p>
+                        <h3>Faturamento (Mês)</h3>
+                        <p id="kpi-faturamento">R$ 0,00</p>
                     </div>
                 </div>
             </section>
 
+            <section class="chart-container card">
+                <div class="chart-header">
+                    <h3>Desempenho Financeiro (Últimos 6 Meses)</h3>
+                </div>
+                <canvas id="financeChart"></canvas>
+            </section>
+
             <section class="table-container">
                 <div class="table-header">
-                    <h2>Monitoramento (LTV)</h2>
+                    <h2>Próximas Manutenções (LTV)</h2>
                 </div>
                 <div class="table-responsive">
                     <table>
@@ -75,7 +103,7 @@
                             <tr>
                                 <th>Cliente</th>
                                 <th>Status</th>
-                                <th>Próxima Manut.</th>
+                                <th>Vencimento</th>
                                 <th>Ação</th>
                             </tr>
                         </thead>
@@ -87,11 +115,14 @@
 
         <div id="view-vendas" class="view-section hidden">
             <section class="card form-section">
-                <h3><i class="fas fa-plus-circle"></i> Registrar Serviço</h3>
+                <div class="form-header">
+                    <h3>Registrar Serviço</h3>
+                    <p>Preencha os dados para atualizar o histórico e o financeiro.</p>
+                </div>
                 <form id="form-venda">
                     <div class="form-grid">
                         <div class="input-group">
-                            <label>Nome do Cliente</label>
+                            <label>Cliente</label>
                             <input type="text" id="venda-nome" placeholder="Busque ou digite..." required list="lista-clientes-sugestao">
                             <datalist id="lista-clientes-sugestao"></datalist>
                         </div>
@@ -109,27 +140,31 @@
                                 <option value="Manutenção Preventiva">Manutenção Preventiva</option>
                                 <option value="Manutenção Corretiva">Manutenção Corretiva</option>
                                 <option value="Instalação Nova">Instalação Nova</option>
+                                <option value="Visita Técnica">Visita Técnica</option>
                             </select>
                         </div>
                         <div class="input-group">
                             <label>Valor (R$)</label>
-                            <input type="number" id="venda-valor" step="0.01" inputmode="decimal" placeholder="0,00">
+                            <input type="number" id="venda-valor" step="0.01" placeholder="0,00" required>
                         </div>
                         <div class="input-group full-width">
-                            <label>Observações</label>
-                            <input type="text" id="venda-obs" placeholder="Detalhes técnicos...">
+                            <label>Detalhes do Serviço</label>
+                            <input type="text" id="venda-obs" placeholder="Ex: Trocado flexível e diafragma...">
                         </div>
                     </div>
-                    <button type="submit" class="btn-save">Salvar Registro</button>
+                    <button type="submit" class="btn-primary ripple">Salvar Registro</button>
                 </form>
             </section>
         </div>
 
         <div id="view-clientes" class="view-section hidden">
             <section class="table-container">
-                <div class="table-header">
-                    <h2>Clientes</h2>
-                    <input type="text" id="busca-cliente" placeholder="Buscar nome..." onkeyup="filtrarClientes()">
+                <div class="table-header with-search">
+                    <h2>Base de Clientes</h2>
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="busca-cliente" placeholder="Buscar nome ou telefone..." onkeyup="filtrarClientes()">
+                    </div>
                 </div>
                 <div class="table-responsive">
                     <table>
@@ -147,25 +182,82 @@
             </section>
         </div>
 
+        <div id="view-financeiro" class="view-section hidden">
+            <section class="card form-section">
+                <h3>Gerador de Recibo Rápido</h3>
+                <p>Gere um PDF ou print para enviar ao cliente.</p>
+                <form id="form-recibo" onsubmit="event.preventDefault(); gerarRecibo();">
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>Nome do Cliente</label>
+                            <input type="text" id="rec-nome" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Valor (R$)</label>
+                            <input type="number" id="rec-valor" step="0.01" required>
+                        </div>
+                        <div class="input-group full-width">
+                            <label>Descrição do Serviço</label>
+                            <input type="text" id="rec-desc" placeholder="Referente a..." required>
+                        </div>
+                    </div>
+                    <button class="btn-secondary"><i class="fas fa-print"></i> Gerar Recibo</button>
+                </form>
+            </section>
+        </div>
+
     </main>
 
     <div id="modal-historico" class="modal-overlay hidden">
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="modal-nome-cliente">Histórico</h2>
-                <button onclick="fecharModal()" class="btn-close"><i class="fas fa-times"></i></button>
+                <button onclick="fecharModal('modal-historico')" class="btn-close"><i class="fas fa-times"></i></button>
             </div>
             <div class="modal-body">
-                <div class="client-summary">
-                    <p><strong>WhatsApp:</strong> <span id="modal-tel"></span></p>
-                    <p><strong>Total Gasto:</strong> R$ <span id="modal-total"></span></p>
+                <div class="client-stats">
+                    <div class="stat-box">
+                        <span class="label">Total Gasto</span>
+                        <span class="value" id="modal-total">R$ 0,00</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="label">Visitas</span>
+                        <span class="value" id="modal-qtd">0</span>
+                    </div>
                 </div>
-                <hr>
-                <h4>Linha do Tempo</h4>
+                <h4 style="margin-top:20px;">Linha do Tempo</h4>
                 <div class="timeline" id="modal-timeline"></div>
+                <div class="modal-actions">
+                    <a href="#" id="modal-btn-zap" target="_blank" class="btn-whatsapp block">Iniciar Conversa no WhatsApp</a>
+                </div>
             </div>
         </div>
     </div>
+
+    <div id="modal-recibo" class="modal-overlay hidden">
+        <div class="modal-content paper-receipt">
+            <div class="receipt-header">
+                <h2>RECIBO</h2>
+                <p>HD AQUECEDORES</p>
+                <small>CNPJ: 00.000.000/0001-00 | (11) 98682-6712</small>
+            </div>
+            <div class="receipt-body">
+                <p>Recebemos de <strong id="print-nome"></strong></p>
+                <p>A quantia de <strong id="print-valor" style="font-size:1.4rem;"></strong></p>
+                <p>Referente a: <span id="print-desc"></span></p>
+                <p>Data: <span id="print-data"></span></p>
+            </div>
+            <div class="receipt-footer">
+                <div class="signature">Assinatura / Responsável</div>
+            </div>
+            <div class="no-print" style="margin-top:20px; text-align:center;">
+                <button onclick="window.print()" class="btn-primary">Imprimir / Salvar PDF</button>
+                <button onclick="fecharModal('modal-recibo')" class="btn-link danger">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">Salvo com sucesso!</div>
 
     <script src="script.js"></script>
 </body>
