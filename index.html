@@ -8,14 +8,14 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     
-    <link rel="stylesheet" href="style.css">
-
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+    <div class="sidebar-overlay" id="overlay" onclick="toggleSidebar()"></div>
 
     <aside class="sidebar" id="sidebar">
         <div class="logo">
@@ -59,7 +59,7 @@
         <div class="mobile-header">
             <button class="btn-hamburger" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
             <h2>HD System</h2>
-        </div>
+            <div style="width: 24px;"></div> </div>
 
         <header class="desktop-header">
             <div>
@@ -81,12 +81,12 @@
                 </div>
                 <div class="card kpi kpi-receita">
                     <div class="icon"><i class="fas fa-dollar-sign"></i></div>
-                    <div class="info"><h3>Faturamento (Mês)</h3><p id="kpi-faturamento">R$ 0,00</p></div>
+                    <div class="info"><h3>Faturamento</h3><p id="kpi-faturamento">R$ 0,00</p></div>
                 </div>
             </section>
 
             <section class="chart-container card">
-                <div class="chart-header"><h3>Desempenho Financeiro (6 Meses)</h3></div>
+                <div class="chart-header"><h3>Desempenho Financeiro</h3></div>
                 <canvas id="financeChart"></canvas>
             </section>
 
@@ -111,24 +111,10 @@
                             <input type="text" id="venda-nome" placeholder="Nome..." required list="lista-clientes-sugestao" onchange="autoPreencherDados()">
                             <datalist id="lista-clientes-sugestao"></datalist>
                         </div>
-                        <div class="input-group">
-                            <label>WhatsApp</label>
-                            <input type="tel" id="venda-tel" placeholder="119..." required>
-                        </div>
-                        
-                        <div class="input-group full-width">
-                            <label>Endereço (Rua, Nº, Bairro)</label>
-                            <input type="text" id="venda-endereco" required>
-                        </div>
-                        <div class="input-group full-width">
-                            <label>Cidade</label>
-                            <input type="text" id="venda-cidade" required>
-                        </div>
-
-                        <div class="input-group">
-                            <label>Data</label>
-                            <input type="date" id="venda-data" required>
-                        </div>
+                        <div class="input-group"><label>WhatsApp</label><input type="tel" id="venda-tel" placeholder="119..." required></div>
+                        <div class="input-group full-width"><label>Endereço Completo</label><input type="text" id="venda-endereco" required></div>
+                        <div class="input-group full-width"><label>Cidade</label><input type="text" id="venda-cidade" required></div>
+                        <div class="input-group"><label>Data</label><input type="date" id="venda-data" required></div>
                         <div class="input-group">
                             <label>Serviço</label>
                             <select id="venda-tipo">
@@ -138,14 +124,8 @@
                                 <option>Visita Técnica</option>
                             </select>
                         </div>
-                        <div class="input-group">
-                            <label>Valor (R$)</label>
-                            <input type="number" id="venda-valor" step="0.01" required>
-                        </div>
-                        <div class="input-group full-width">
-                            <label>Detalhes</label>
-                            <input type="text" id="venda-obs">
-                        </div>
+                        <div class="input-group"><label>Valor (R$)</label><input type="number" id="venda-valor" step="0.01" required></div>
+                        <div class="input-group full-width"><label>Detalhes</label><input type="text" id="venda-obs"></div>
                     </div>
                     <button type="submit" class="btn-primary">Salvar Registro</button>
                 </form>
@@ -163,7 +143,7 @@
                 </div>
                 <div class="table-responsive">
                     <table>
-                        <thead><tr><th>Nome</th><th>Endereço</th><th>Ação</th></tr></thead>
+                        <thead><tr><th>Nome</th><th>Endereço</th><th>Histórico</th></tr></thead>
                         <tbody id="tabela-clientes-base"></tbody>
                     </table>
                 </div>
@@ -191,6 +171,7 @@
             <div class="modal-body">
                 <div class="client-details" style="margin-bottom:15px; background:var(--bg); padding:10px; border-radius:8px;">
                     <p style="margin-bottom:5px"><i class="fas fa-map-marker-alt" style="color:var(--accent)"></i> <span id="modal-endereco"></span></p>
+                    <p style="margin-bottom:5px"><i class="fas fa-city" style="color:var(--blue)"></i> <span id="modal-cidade"></span></p>
                     <p><i class="fas fa-phone" style="color:var(--green)"></i> <span id="modal-telefone"></span></p>
                 </div>
                 <div class="client-stats"><div class="stat-box"><span class="label">Total Gasto</span><span class="value" id="modal-total">R$ 0,00</span></div></div>
