@@ -1,36 +1,30 @@
-// --- 1. CONFIGURAÇÃO DO SUPABASE ---
-// COLE SUAS CHAVES AQUI
+// --- CONFIGURAÇÃO ---
 const SUPABASE_URL = 'https://lhfhrrxhiirnayclvxyc.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxoZmhycnhoaWlybmF5Y2x2eHljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ5NTc0NzUsImV4cCI6MjA4MDUzMzQ3NX0.gdk9mgFuojkQkzmIr4O9KzE_r8y0TMcYnyXMn9DG2n4';
 
-// Inicializa cliente (com _ para evitar conflito)
+// CLIENTE SUPABASE (USANDO _ PARA EVITAR CONFLITO)
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let clientes = [];
 let financeChartInstance = null;
 
-// --- 2. INICIALIZAÇÃO ---
+// --- INICIALIZAÇÃO ---
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log("Sistema Iniciando...");
     setupMenuAndTheme();
-    
-    // Data Topo
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     document.getElementById('data-hoje').innerText = new Date().toLocaleDateString('pt-BR', options);
 
-    // Carregar dados
     try {
         await carregarDadosDoBanco();
     } catch (e) {
-        console.error("Erro fatal na inicialização:", e);
-        alert("Erro ao conectar no banco de dados. Verifique o console (F12).");
+        console.error("Erro inicialização:", e);
+        showToast("Erro de conexão", "red");
     }
 });
 
-// --- 3. BANCO DE DADOS ---
+// --- BANCO DE DADOS ---
 async function carregarDadosDoBanco() {
-    console.log("Buscando dados no Supabase...");
-    
+    // Busca clientes ordenados por ID
     const { data, error } = await _supabase
         .from('clientes')
         .select('*')
@@ -38,67 +32,80 @@ async function carregarDadosDoBanco() {
 
     if (error) {
         console.error("Erro Supabase:", error);
-        showToast("Erro ao ler dados: " + error.message, "red");
+        showToast("Erro ao ler dados", "red");
         return;
     }
 
-    console.log("Dados recebidos:", data);
     clientes = data || [];
-
-    if (clientes.length === 0) {
-        console.log("Banco vazio.");
-        // Removi o confirm automático para não travar o carregamento
-    } else {
-        renderizarTudo();
-        renderizarGrafico();
-    }
+    renderizarTudo();
+    renderizarGrafico();
 }
 
 async function salvarCliente(clienteObj) {
-    console.log("Tentando salvar:", clienteObj);
     let error = null;
+
+    // Lógica para Endereço + Cidade
+    let enderecoFinal = clienteObj.endereco || "";
+    if (clienteObj.cidade && !enderecoFinal.includes(clienteObj.cidade)) {
+        enderecoFinal = `${enderecoFinal} - ${clienteObj.cidade}`;
+    }
+
+    const dadosParaSalvar = {
+        nome: clienteObj.nome,
+        telefone: clienteObj.telefone,
+        endereco: enderecoFinal,
+        historico: clienteObj.historico
+    };
 
     if (clienteObj.id) {
         // Atualizar
-        const res = await _supabase.from('clientes')
-            .update({ 
-                nome: clienteObj.nome, 
-                telefone: clienteObj.telefone, 
-                historico: clienteObj.historico 
-            })
-            .eq('id', clienteObj.id);
+        const res = await _supabase.from('clientes').update(dadosParaSalvar).eq('id', clienteObj.id);
         error = res.error;
     } else {
-        // Inserir Novo (Sem ID, o banco cria sozinho)
-        // IMPORTANTE: Removemos o ID se ele for undefined/null para o banco criar
-        const novoCliente = {
-            nome: clienteObj.nome,
-            telefone: clienteObj.telefone, 
-            historico: clienteObj.historico 
-        };
-        
-        const res = await _supabase.from('clientes').insert([novoCliente]);
+        // Criar
+        const res = await _supabase.from('clientes').insert([dadosParaSalvar]);
         error = res.error;
     }
 
     if (error) {
-        console.error("Erro ao salvar:", error);
-        alert("Erro no Banco de Dados: " + error.message + "\n\nDica: Verifique se a tabela 'clientes' tem as colunas 'nome', 'telefone' e 'historico'.");
+        alert("Erro ao salvar: " + error.message);
         return false;
     }
     
-    console.log("Salvo com sucesso!");
     await carregarDadosDoBanco();
     return true;
 }
 
-// --- 4. FORMULÁRIO DE VENDA (AQUI ESTAVA O PROBLEMA PROVAVELMENTE) ---
+// --- EVENTOS DE FORMULÁRIO ---
+window.autoPreencherDados = function() {
+    const nome = document.getElementById('venda-nome').value;
+    const cli = clientes.find(c => c.nome.toLowerCase() === nome.toLowerCase());
+    
+    if (cli) {
+        document.getElementById('venda-tel').value = cli.telefone || '';
+        
+        // Separa Endereço da Cidade
+        const endCompleto = cli.endereco || '';
+        if (endCompleto.includes(" - ")) {
+            const partes = endCompleto.split(" - ");
+            const cidade = partes.pop();
+            document.getElementById('venda-cidade').value = cidade;
+            document.getElementById('venda-endereco').value = partes.join(" - ");
+        } else {
+            document.getElementById('venda-endereco').value = endCompleto;
+            document.getElementById('venda-cidade').value = "";
+        }
+        showToast("Cliente encontrado!", "blue");
+    }
+}
+
 document.getElementById('form-venda').addEventListener('submit', async (e) => {
     e.preventDefault();
-    console.log("Botão salvar clicado!");
-
+    
     const nome = document.getElementById('venda-nome').value;
     const tel = document.getElementById('venda-tel').value;
+    const rua = document.getElementById('venda-endereco').value;
+    const cid = document.getElementById('venda-cidade').value;
     const data = document.getElementById('venda-data').value;
     const tipo = document.getElementById('venda-tipo').value;
     const valor = document.getElementById('venda-valor').value;
@@ -110,120 +117,59 @@ document.getElementById('form-venda').addEventListener('submit', async (e) => {
     btn.disabled = true;
 
     try {
-        // Procura cliente na lista local (ignorando maiúsculas/minúsculas)
-        let cliente = clientes.find(c => c.nome && c.nome.toLowerCase() === nome.toLowerCase());
-        
+        let cliente = clientes.find(c => c.nome.toLowerCase() === nome.toLowerCase());
         const servico = { data, servico: tipo, valor, obs };
 
         if (cliente) {
-            console.log("Cliente existente encontrado:", cliente);
-            // Garante que histórico existe
-            if (!Array.isArray(cliente.historico)) cliente.historico = [];
-            
-            // Adiciona novo serviço no topo
+            // Atualiza
+            if (!cliente.historico) cliente.historico = [];
             cliente.historico.unshift(servico);
-            cliente.telefone = tel; // Atualiza telefone
-            
+            cliente.telefone = tel;
+            cliente.endereco = rua; 
+            cliente.cidade = cid;
             await salvarCliente(cliente);
             showToast("Histórico atualizado!");
         } else {
-            console.log("Cliente novo:", nome);
+            // Novo
             const novoCliente = { 
-                nome: nome, 
-                telefone: tel, 
-                historico: [servico] 
+                nome, telefone: tel, endereco: rua, cidade: cid, historico: [servico] 
             };
             await salvarCliente(novoCliente);
             showToast("Novo cliente salvo!");
         }
 
         document.getElementById('form-venda').reset();
-        
-        // Volta para o dashboard após 1 segundo
-        setTimeout(() => {
-            navegar('dashboard');
-        }, 1000);
+        navegar('dashboard');
 
     } catch (err) {
-        console.error("Erro no fluxo de salvar:", err);
-        alert("Erro inesperado no código: " + err.message);
+        console.error(err);
+        alert("Erro no código: " + err.message);
     } finally {
         btn.innerHTML = txtOriginal;
         btn.disabled = false;
     }
 });
 
-// --- 5. RENDERIZAÇÃO E OUTROS ---
-function setupMenuAndTheme() {
-    document.querySelectorAll('.menu-nav a').forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            navegar(link.id.replace('link-', '')); 
-        });
-    });
-
-    const currentTheme = localStorage.getItem('theme');
-    if (currentTheme === 'dark') {
-        document.documentElement.setAttribute('data-theme', 'dark');
-        document.getElementById('checkbox').checked = true;
-    }
-
-    document.getElementById('checkbox').addEventListener('change', (e) => {
-        const theme = e.target.checked ? 'dark' : 'light';
-        document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('theme', theme);
-        renderizarGrafico();
-    });
-}
-
-function navegar(telaId) {
-    document.querySelectorAll('.menu-item').forEach(l => l.classList.remove('active'));
-    const link = document.getElementById('link-' + telaId);
-    if(link) link.classList.add('active');
-
-    document.querySelectorAll('.view-section').forEach(v => v.classList.add('hidden'));
-    const view = document.getElementById('view-' + telaId);
-    if(view) view.classList.remove('hidden');
-
-    const titulos = {
-        'dashboard': 'Visão Geral', 'vendas': 'Novo Serviço',
-        'clientes': 'Base de Clientes', 'financeiro': 'Emissão de Recibos'
-    };
-    document.getElementById('page-title').innerText = titulos[telaId] || 'HD System';
-
-    if (window.innerWidth <= 768) toggleSidebar();
-    if (telaId === 'dashboard') renderizarGrafico();
-}
-
-function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('active');
-    document.querySelector('.sidebar-overlay').classList.toggle('active');
-}
-
+// --- RENDERIZAÇÃO ---
 function renderizarTudo() {
-    const tabelaDash = document.getElementById('tabela-dashboard');
-    const tabelaBase = document.getElementById('tabela-clientes-base');
-    const datalist = document.getElementById('lista-clientes-sugestao');
+    const tbDash = document.getElementById('tabela-dashboard');
+    const tbBase = document.getElementById('tabela-clientes-base');
+    const dl = document.getElementById('lista-clientes-sugestao');
     
-    tabelaDash.innerHTML = '';
-    tabelaBase.innerHTML = '';
-    datalist.innerHTML = '';
+    tbDash.innerHTML = '';
+    tbBase.innerHTML = '';
+    dl.innerHTML = '';
 
-    let kpi = { vencidos: 0, alerta: 0, receitaMes: 0 };
+    let kpi = { vencidos: 0, alerta: 0, receita: 0 };
     const mesAtual = new Date().getMonth();
     const anoAtual = new Date().getFullYear();
 
     clientes.forEach(c => {
         const hist = Array.isArray(c.historico) ? c.historico : [];
-        // Ordena histórico por data (segurança contra dados ruins)
-        hist.sort((a, b) => {
-            if(!a.data) return 1;
-            if(!b.data) return -1;
-            return new Date(b.data) - new Date(a.data)
-        });
+        hist.sort((a, b) => new Date(b.data || 0) - new Date(a.data || 0));
         
-        const ultimaData = hist.length > 0 ? hist[0].data : null;
-        const status = calcularStatus(ultimaData);
+        const ultData = hist.length > 0 ? hist[0].data : null;
+        const status = calcularStatus(ultData);
 
         if (status.st === 'vencido') kpi.vencidos++;
         else if (status.st === 'alerta') kpi.alerta++;
@@ -232,39 +178,37 @@ function renderizarTudo() {
             if(h.data) {
                 const dh = new Date(h.data);
                 dh.setHours(dh.getHours() + 12);
-                if (dh.getMonth() === mesAtual && dh.getFullYear() === anoAtual) {
-                    kpi.receitaMes += parseFloat(h.valor || 0);
-                }
+                if (dh.getMonth() === mesAtual && dh.getFullYear() === anoAtual) kpi.receita += parseFloat(h.valor || 0);
             }
         });
 
-        // Dashboard Row
+        // Dashboard
         if (status.st !== 'ok') {
             const zap = `https://wa.me/55${c.telefone}?text=${encodeURIComponent(`Olá ${c.nome}, manutenção venceu.`)}`;
-            tabelaDash.innerHTML += `
+            tbDash.innerHTML += `
                 <tr>
                     <td><strong>${c.nome}</strong></td>
                     <td><span class="status status-${status.st}">${status.txt}</span></td>
-                    <td>${ultimaData ? formatarData(ultimaData) : '-'}</td>
+                    <td>${ultData ? formatarData(ultData) : '-'}</td>
                     <td><a href="${zap}" target="_blank" class="btn-whatsapp"><i class="fab fa-whatsapp"></i></a></td>
                 </tr>`;
         }
 
-        // Base Row
-        tabelaBase.innerHTML += `
+        // Base
+        tbBase.innerHTML += `
             <tr>
                 <td>${c.nome}</td>
-                <td>${c.telefone}</td>
+                <td style="font-size:0.8rem; max-width:200px;">${c.endereco || '-'}</td>
                 <td><button class="btn-hist" onclick="abrirHistorico(${c.id})">Ver</button></td>
             </tr>`;
 
-        datalist.innerHTML += `<option value="${c.nome}">`;
+        dl.innerHTML += `<option value="${c.nome}">`;
     });
 
     document.getElementById('kpi-vencidos').innerText = kpi.vencidos;
     document.getElementById('kpi-alerta').innerText = kpi.alerta;
     const elFat = document.getElementById('kpi-faturamento');
-    elFat.innerText = `R$ ${kpi.receitaMes.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+    elFat.innerText = `R$ ${kpi.receita.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
     elFat.style.color = "#10b981";
 }
 
@@ -284,7 +228,7 @@ function renderizarGrafico() {
                 if(h.data) {
                     const dh = new Date(h.data);
                     dh.setHours(dh.getHours() + 12);
-                    if(dh.getMonth() === d.getMonth()) total += parseFloat(h.valor || 0);
+                    if(dh.getMonth() === d.getMonth() && dh.getFullYear() === d.getFullYear()) total += parseFloat(h.valor || 0);
                 }
             });
         });
@@ -310,43 +254,88 @@ function renderizarGrafico() {
     });
 }
 
-// Utils
+// --- UTILS ---
+function setupMenuAndTheme() {
+    document.querySelectorAll('.menu-nav a').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            navegar(link.id.replace('link-', '')); 
+        });
+    });
+    const currentTheme = localStorage.getItem('theme');
+    if (currentTheme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.getElementById('checkbox').checked = true;
+    }
+    document.getElementById('checkbox').addEventListener('change', (e) => {
+        const theme = e.target.checked ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+        renderizarGrafico();
+    });
+}
+
+function navegar(telaId) {
+    document.querySelectorAll('.menu-item').forEach(l => l.classList.remove('active'));
+    document.getElementById('link-' + telaId).classList.add('active');
+    document.querySelectorAll('.view-section').forEach(v => v.classList.add('hidden'));
+    document.getElementById('view-' + telaId).classList.remove('hidden');
+    const titulos = {'dashboard': 'Visão Geral', 'vendas': 'Novo Serviço', 'clientes': 'Base de Clientes', 'financeiro': 'Recibos'};
+    document.getElementById('page-title').innerText = titulos[telaId];
+    if (window.innerWidth <= 768) toggleMenu();
+    if (telaId === 'dashboard') renderizarGrafico();
+}
+
+function toggleMenu() {
+    document.getElementById('sidebar').classList.toggle('active');
+    document.querySelector('.sidebar-overlay').classList.toggle('active');
+}
+
 function calcularStatus(d) {
     if (!d) return { st: 'novo', txt: 'Novo' };
     const p = new Date(d); p.setFullYear(p.getFullYear() + 1);
     const diff = Math.ceil((p - new Date()) / 86400000);
-    if (diff <= 0) return { st: 'vencido', txt: `Vencido ${Math.abs(diff)}d` };
+    if (diff <= 0) return { st: 'vencido', txt: `Vencido` };
     if (diff <= 30) return { st: 'alerta', txt: `Vence ${diff}d` };
     return { st: 'ok', txt: 'Em dia' };
 }
-function formatarData(d) { const dt = new Date(d); dt.setMinutes(dt.getMinutes() + dt.getTimezoneOffset()); return dt.toLocaleDateString('pt-BR'); }
-function formatarTel(t) { return t.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3'); }
-function showToast(msg, color="green") { const t = document.getElementById('toast'); t.innerText = msg; t.style.backgroundColor = color === "red" ? "#e74c3c" : "#10b981"; t.className = "toast show"; setTimeout(() => t.className = "toast", 3000); }
 
-async function carregarDadosFicticios() {
-    function gd(d) { const dt = new Date(); dt.setDate(dt.getDate() + d); return dt.toISOString().split('T')[0]; }
-    const mocks = [
-        { nome: "Construtora Exemplo", telefone: "11999998888", historico: [{ data: gd(0), servico: "Instalação", valor: 4500, obs: "Teste" }] },
-        { nome: "Cliente Antigo", telefone: "11988887777", historico: [{ data: gd(-370), servico: "Manutenção", valor: 350, obs: "Vencido" }] }
-    ];
-    await _supabase.from('clientes').insert(mocks);
-    window.location.reload();
+// FUNÇÃO PADRONIZADA: formatarData (com 'ar')
+function formatarData(d) { 
+    if(!d) return '-';
+    const dt = new Date(d); 
+    dt.setMinutes(dt.getMinutes() + dt.getTimezoneOffset()); 
+    return dt.toLocaleDateString('pt-BR'); 
+}
+
+function formatarTel(t) { 
+    if(!t) return '';
+    return t.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3'); 
+}
+
+function showToast(msg, color="green") { 
+    const t = document.getElementById('toast'); 
+    t.innerText = msg; t.style.backgroundColor = color === "red" ? "#e74c3c" : "#10b981"; 
+    t.className = "toast show"; setTimeout(() => t.className = "toast", 3000); 
 }
 
 window.abrirHistorico = (id) => {
     const c = clientes.find(x => x.id === id);
     if(!c) return;
     document.getElementById('modal-nome-cliente').innerText = c.nome;
-    // document.getElementById('modal-tel').innerText = formatarTel(c.telefone); 
+    document.getElementById('modal-endereco').innerText = c.endereco || "Endereço não cadastrado";
+    // document.getElementById('modal-cidade').innerText = ""; // Removido pois usamos endereco completo agora
+    document.getElementById('modal-telefone').innerText = formatarTel(c.telefone);
+    
     let total = 0; const tl = document.getElementById('modal-timeline'); tl.innerHTML = '';
-    const hist = Array.isArray(c.historico) ? c.historico : [];
-    hist.forEach(h => {
+    (c.historico || []).forEach(h => {
         total += parseFloat(h.valor || 0);
-        tl.innerHTML += `<div class="timeline-item"><span class="t-date">${formatarData(h.data)}</span><span class="t-title">${h.servico}</span><span class="t-val">R$ ${parseFloat(h.valor).toFixed(2)}</span></div>`;
+        tl.innerHTML += `<div class="timeline-item"><span class="t-date">${formatarData(h.data)}</span><span class="t-title">${h.servico}</span><p style="font-size:0.8rem;color:gray">${h.obs}</p><span class="t-val">R$ ${parseFloat(h.valor).toFixed(2)}</span></div>`;
     });
     document.getElementById('modal-total').innerText = `R$ ${total.toFixed(2)}`;
     document.getElementById('modal-historico').classList.remove('hidden');
 };
+
 window.fecharModal = (id) => document.getElementById(id).classList.add('hidden');
 window.gerarRecibo = () => {
     document.getElementById('print-nome').innerText = document.getElementById('rec-nome').value;
