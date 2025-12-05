@@ -7,11 +7,10 @@
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -19,23 +18,15 @@
 
     <aside class="sidebar" id="sidebar">
         <div class="logo">
-            <h2>HD System</h2>
+            <h2>HD System <span style="font-size:0.5em; color:var(--accent); vertical-align:super;">PRO</span></h2>
             <button class="btn-close-sidebar" onclick="toggleSidebar()"><i class="fas fa-times"></i></button>
         </div>
         
         <nav class="menu-nav">
-            <a href="#" id="link-dashboard" class="menu-item active" onclick="navegar('dashboard')">
-                <i class="fas fa-chart-pie"></i> Dashboard
-            </a>
-            <a href="#" id="link-vendas" class="menu-item" onclick="navegar('vendas')">
-                <i class="fas fa-plus-circle"></i> Novo Serviço
-            </a>
-            <a href="#" id="link-clientes" class="menu-item" onclick="navegar('clientes')">
-                <i class="fas fa-address-book"></i> Clientes
-            </a>
-            <a href="#" id="link-financeiro" class="menu-item" onclick="navegar('financeiro')">
-                <i class="fas fa-file-invoice-dollar"></i> Recibos
-            </a>
+            <a href="#" id="link-dashboard" class="menu-item active" onclick="navegar('dashboard')"><i class="fas fa-chart-pie"></i> Dashboard</a>
+            <a href="#" id="link-vendas" class="menu-item" onclick="navegar('vendas')"><i class="fas fa-plus-circle"></i> Novo Serviço</a>
+            <a href="#" id="link-clientes" class="menu-item" onclick="navegar('clientes')"><i class="fas fa-address-book"></i> Clientes</a>
+            <a href="#" id="link-financeiro" class="menu-item" onclick="navegar('financeiro')"><i class="fas fa-file-invoice-dollar"></i> Recibos</a>
         </nav>
 
         <div class="theme-switch-wrapper">
@@ -45,62 +36,36 @@
             </label>
             <em>Modo Escuro</em>
         </div>
-
+        
         <div class="user-info">
             <p><strong>HD Aquecedores</strong></p>
-            <div class="actions">
-                <button onclick="exportarCSV()" class="btn-link"><i class="fas fa-download"></i> Backup Excel</button>
-            </div>
+            <button onclick="exportarCSV()" class="btn-link"><i class="fas fa-download"></i> Backup Excel</button>
         </div>
     </aside>
 
     <main class="content">
-        
         <div class="mobile-header">
             <button class="btn-hamburger" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
             <h2>HD System</h2>
         </div>
 
         <header class="desktop-header">
-            <div>
-                <h1 id="page-title">Visão Geral</h1>
-                <p class="subtitle">Painel de controle conectado.</p>
-            </div>
+            <div><h1 id="page-title">Visão Geral</h1><p class="subtitle">Painel de controle conectado.</p></div>
             <div class="date-badge" id="data-hoje"></div>
         </header>
 
         <div id="view-dashboard" class="view-section">
             <section class="kpi-container">
-                <div class="card kpi kpi-vencido">
-                    <div class="icon"><i class="fas fa-exclamation-circle"></i></div>
-                    <div class="info">
-                        <h3>Vencidos</h3>
-                        <p id="kpi-vencidos">0</p>
-                    </div>
-                </div>
-                <div class="card kpi kpi-alerta">
-                    <div class="icon"><i class="fas fa-clock"></i></div>
-                    <div class="info">
-                        <h3>A Vencer (30d)</h3>
-                        <p id="kpi-alerta">0</p>
-                    </div>
-                </div>
-                <div class="card kpi kpi-receita">
-                    <div class="icon"><i class="fas fa-dollar-sign"></i></div>
-                    <div class="info">
-                        <h3>Faturamento (Mês)</h3>
-                        <p id="kpi-faturamento">R$ 0,00</p>
-                    </div>
-                </div>
+                <div class="card kpi kpi-vencido"><div class="icon"><i class="fas fa-exclamation-circle"></i></div><div class="info"><h3>Vencidos</h3><p id="kpi-vencidos">0</p></div></div>
+                <div class="card kpi kpi-alerta"><div class="icon"><i class="fas fa-clock"></i></div><div class="info"><h3>A Vencer (30d)</h3><p id="kpi-alerta">0</p></div></div>
+                <div class="card kpi kpi-receita"><div class="icon"><i class="fas fa-dollar-sign"></i></div><div class="info"><h3>Faturamento (Mês)</h3><p id="kpi-faturamento">R$ 0,00</p></div></div>
             </section>
 
             <section class="chart-container card">
                 <div class="chart-header">
                     <h3>Desempenho Financeiro</h3>
                     <div class="chart-filters">
-                        <button class="filter-btn" onclick="atualizarGrafico('1')">1M</button>
-                        <button class="filter-btn" onclick="atualizarGrafico('3')">3M</button>
-                        <button class="filter-btn active" onclick="atualizarGrafico('6')">6M</button>
+                        <button class="filter-btn" onclick="atualizarGrafico('6')">6 Meses</button>
                         <button class="filter-btn" onclick="atualizarGrafico('12')">1 Ano</button>
                         <button class="filter-btn" onclick="atualizarGrafico('60')">5 Anos</button>
                     </div>
@@ -109,19 +74,10 @@
             </section>
 
             <section class="table-container">
-                <div class="table-header">
-                    <h2>Próximas Manutenções</h2>
-                </div>
+                <div class="table-header"><h2>Próximas Manutenções</h2></div>
                 <div class="table-responsive">
                     <table>
-                        <thead>
-                            <tr>
-                                <th>Cliente</th>
-                                <th>Status</th>
-                                <th>Vencimento</th>
-                                <th>WhatsApp</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th>Cliente</th><th>Status</th><th>Vencimento</th><th>Ação</th></tr></thead>
                         <tbody id="tabela-dashboard"></tbody>
                     </table>
                 </div>
@@ -130,37 +86,22 @@
 
         <div id="view-vendas" class="view-section hidden">
             <section class="card form-section">
-                <div class="form-header">
-                    <h3>Registrar Serviço</h3>
-                    <p>Preencha para atualizar o histórico.</p>
-                </div>
+                <div class="form-header"><h3>Registrar Serviço</h3><p>Preencha para atualizar o histórico.</p></div>
                 <form id="form-venda">
                     <div class="form-grid">
                         <div class="input-group">
                             <label>Cliente</label>
-                            <input type="text" id="venda-nome" placeholder="Nome..." required list="lista-clientes-sugestao" onchange="autoPreencherDados()">
+                            <input type="text" id="venda-nome" placeholder="Busque ou digite..." required list="lista-clientes-sugestao" onchange="autoPreencherDados()">
                             <datalist id="lista-clientes-sugestao"></datalist>
                         </div>
-                        <div class="input-group">
-                            <label>WhatsApp</label>
-                            <input type="tel" id="venda-tel" placeholder="119..." required>
-                        </div>
+                        <div class="input-group"><label>WhatsApp</label><input type="tel" id="venda-tel" placeholder="119..." required></div>
                         
-                        <div class="input-group full-width">
-                            <label>Endereço Completo</label>
-                            <input type="text" id="venda-endereco" required>
-                        </div>
-                        <div class="input-group full-width">
-                            <label>Cidade</label>
-                            <input type="text" id="venda-cidade" required>
-                        </div>
+                        <div class="input-group full-width"><label>Endereço (Rua, Nº, Bairro)</label><input type="text" id="venda-endereco" required></div>
+                        <div class="input-group full-width"><label>Cidade</label><input type="text" id="venda-cidade" required></div>
 
+                        <div class="input-group"><label>Data</label><input type="date" id="venda-data" required></div>
                         <div class="input-group">
-                            <label>Data do Serviço</label>
-                            <input type="date" id="venda-data" required>
-                        </div>
-                        <div class="input-group">
-                            <label>Tipo de Serviço</label>
+                            <label>Serviço</label>
                             <select id="venda-tipo">
                                 <option>Manutenção Preventiva</option>
                                 <option>Manutenção Corretiva</option>
@@ -168,14 +109,8 @@
                                 <option>Visita Técnica</option>
                             </select>
                         </div>
-                        <div class="input-group">
-                            <label>Valor (R$)</label>
-                            <input type="number" id="venda-valor" step="0.01" required>
-                        </div>
-                        <div class="input-group full-width">
-                            <label>Detalhes</label>
-                            <input type="text" id="venda-obs">
-                        </div>
+                        <div class="input-group"><label>Valor (R$)</label><input type="number" id="venda-valor" step="0.01" required></div>
+                        <div class="input-group full-width"><label>Detalhes</label><input type="text" id="venda-obs"></div>
                     </div>
                     <button type="submit" class="btn-primary">Salvar Registro</button>
                 </form>
@@ -186,20 +121,11 @@
             <section class="table-container">
                 <div class="table-header with-search">
                     <h2>Base de Clientes</h2>
-                    <div class="search-box">
-                        <i class="fas fa-search"></i>
-                        <input type="text" id="busca-cliente" placeholder="Buscar..." onkeyup="filtrarClientes()">
-                    </div>
+                    <div class="search-box"><i class="fas fa-search"></i><input type="text" id="busca-cliente" placeholder="Buscar..." onkeyup="filtrarClientes()"></div>
                 </div>
                 <div class="table-responsive">
                     <table>
-                        <thead>
-                            <tr>
-                                <th>Nome</th>
-                                <th>Endereço</th>
-                                <th>Histórico</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th>Nome</th><th>Endereço</th><th>Ação</th></tr></thead>
                         <tbody id="tabela-clientes-base"></tbody>
                     </table>
                 </div>
@@ -211,20 +137,11 @@
                 <h3>Gerador de Recibo</h3>
                 <form id="form-recibo" onsubmit="event.preventDefault(); gerarRecibo();">
                     <div class="form-grid">
-                        <div class="input-group">
-                            <label>Nome do Cliente</label>
-                            <input type="text" id="rec-nome" required>
-                        </div>
-                        <div class="input-group">
-                            <label>Valor (R$)</label>
-                            <input type="number" id="rec-valor" step="0.01" required>
-                        </div>
-                        <div class="input-group full-width">
-                            <label>Referente a</label>
-                            <input type="text" id="rec-desc" required>
-                        </div>
+                        <div class="input-group"><label>Nome</label><input type="text" id="rec-nome" required></div>
+                        <div class="input-group"><label>Valor</label><input type="number" id="rec-valor" step="0.01" required></div>
+                        <div class="input-group full-width"><label>Referente a</label><input type="text" id="rec-desc" required></div>
                     </div>
-                    <button class="btn-secondary"><i class="fas fa-print"></i> Gerar para Impressão</button>
+                    <button class="btn-secondary"><i class="fas fa-print"></i> Gerar Recibo</button>
                 </form>
             </section>
         </div>
@@ -232,22 +149,13 @@
 
     <div id="modal-historico" class="modal-overlay hidden">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modal-nome-cliente">Histórico</h2>
-                <button onclick="fecharModal('modal-historico')" class="btn-close"><i class="fas fa-times"></i></button>
-            </div>
+            <div class="modal-header"><h2 id="modal-nome-cliente">Histórico</h2><button onclick="fecharModal('modal-historico')" class="btn-close"><i class="fas fa-times"></i></button></div>
             <div class="modal-body">
                 <div class="client-details" style="margin-bottom:15px; background:var(--bg); padding:10px; border-radius:8px;">
-                    <p style="margin-bottom:5px"><i class="fas fa-map-marker-alt" style="color:var(--accent)"></i> <span id="modal-endereco"></span></p>
-                    <p style="margin-bottom:5px"><i class="fas fa-city" style="color:var(--blue)"></i> <span id="modal-cidade"></span></p>
+                    <p><i class="fas fa-map-marker-alt" style="color:var(--accent)"></i> <span id="modal-endereco"></span></p>
                     <p><i class="fas fa-phone" style="color:var(--green)"></i> <span id="modal-telefone"></span></p>
                 </div>
-                <div class="client-stats">
-                    <div class="stat-box">
-                        <span class="label">Total Gasto</span>
-                        <span class="value" id="modal-total">R$ 0,00</span>
-                    </div>
-                </div>
+                <div class="client-stats"><div class="stat-box"><span class="label">Total Gasto</span><span class="value" id="modal-total">R$ 0,00</span></div></div>
                 <div class="timeline" id="modal-timeline"></div>
             </div>
         </div>
@@ -255,23 +163,15 @@
 
     <div id="modal-recibo" class="modal-overlay hidden">
         <div class="modal-content paper-receipt">
-            <div class="receipt-header">
-                <h2>RECIBO</h2>
-                <p>HD AQUECEDORES</p>
-            </div>
+            <div class="receipt-header"><h2>RECIBO</h2><p>HD AQUECEDORES</p></div>
             <div class="receipt-body">
                 <p>Recebemos de <strong id="print-nome"></strong></p>
                 <p>A quantia de <strong id="print-valor" style="font-size:1.4rem;"></strong></p>
                 <p>Referente a: <span id="print-desc"></span></p>
                 <p>Data: <span id="print-data"></span></p>
             </div>
-            <div class="receipt-footer">
-                <div class="signature">Assinatura</div>
-            </div>
-            <div class="no-print" style="margin-top:20px; text-align:center;">
-                <button onclick="window.print()" class="btn-primary">Imprimir</button>
-                <button onclick="fecharModal('modal-recibo')" class="btn-link danger">Fechar</button>
-            </div>
+            <div class="receipt-footer"><div class="signature">Assinatura</div></div>
+            <div class="no-print" style="margin-top:20px; text-align:center;"><button onclick="window.print()" class="btn-primary">Imprimir</button><button onclick="fecharModal('modal-recibo')" class="btn-link danger">Fechar</button></div>
         </div>
     </div>
 
