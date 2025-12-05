@@ -1,46 +1,25 @@
-// --- 1. CONFIGURAÇÃO DO SUPABASE ---
+// --- CONFIGURAÇÃO ---
 const SUPABASE_URL = 'https://lhfhrrxhiirnayclvxyc.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxoZmhycnhoaWlybmF5Y2x2eHljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ5NTc0NzUsImV4cCI6MjA4MDUzMzQ3NX0.gdk9mgFuojkQkzmIr4O9KzE_r8y0TMcYnyXMn9DG2n4';
 
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
 let clientes = [];
 let financeChartInstance = null;
-let periodoGrafico = 6; 
+let periodoGrafico = 6;
 
-// --- 2. INICIALIZAÇÃO ---
 document.addEventListener('DOMContentLoaded', async () => {
     setupMenuAndTheme();
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     document.getElementById('data-hoje').innerText = new Date().toLocaleDateString('pt-BR', options);
-
-    try {
-        await carregarDadosDoBanco();
-    } catch (e) {
-        console.error("Erro inicial:", e);
-        showToast("Erro de conexão", "red");
-    }
+    try { await carregarDadosDoBanco(); } catch (e) { console.error("Erro:", e); showToast("Erro conexão", "red"); }
 });
 
-// --- 3. BANCO DE DADOS ---
 async function carregarDadosDoBanco() {
-    const { data, error } = await _supabase
-        .from('clientes')
-        .select('*')
-        .order('id', { ascending: false });
-
-    if (error) {
-        console.error("Erro Supabase:", error);
-        showToast("Erro ao ler dados", "red");
-        return;
-    }
-
+    const { data, error } = await _supabase.from('clientes').select('*').order('id', { ascending: false });
+    if (error) { console.error(error); return; }
     clientes = data || [];
-    
     if (clientes.length === 0) {
-        setTimeout(async () => {
-            if(confirm("Banco vazio. Deseja carregar dados de teste?")) await carregarDadosFicticios();
-        }, 500);
+        setTimeout(async () => { if(confirm("Banco vazio. Carregar dados teste?")) await carregarDadosFicticios(); }, 500);
     } else {
         renderizarTudo();
         renderizarGrafico();
@@ -49,65 +28,44 @@ async function carregarDadosDoBanco() {
 
 async function salvarCliente(clienteObj) {
     let error = null;
-
-    // CONCATENA ENDEREÇO E CIDADE
     let enderecoFinal = clienteObj.endereco || "";
     if (clienteObj.cidade && !enderecoFinal.toLowerCase().includes(clienteObj.cidade.toLowerCase())) {
         enderecoFinal = `${enderecoFinal} - ${clienteObj.cidade}`;
     }
-
-    const dadosParaSalvar = {
-        nome: clienteObj.nome,
-        telefone: clienteObj.telefone,
-        endereco: enderecoFinal,
-        historico: clienteObj.historico
-    };
-
+    const dados = { nome: clienteObj.nome, telefone: clienteObj.telefone, endereco: enderecoFinal, historico: clienteObj.historico };
+    
     if (clienteObj.id) {
-        const res = await _supabase.from('clientes').update(dadosParaSalvar).eq('id', clienteObj.id);
+        const res = await _supabase.from('clientes').update(dados).eq('id', clienteObj.id);
         error = res.error;
     } else {
-        const res = await _supabase.from('clientes').insert([dadosParaSalvar]);
+        const res = await _supabase.from('clientes').insert([dados]);
         error = res.error;
     }
-
-    if (error) {
-        alert("Erro ao salvar: " + error.message);
-        return false;
-    }
-    
+    if (error) { alert("Erro ao salvar: " + error.message); return false; }
     await carregarDadosDoBanco();
     return true;
 }
 
-// --- 4. FORMULÁRIO ---
 window.autoPreencherDados = function() {
-    const nomeDigitado = document.getElementById('venda-nome').value;
-    const cli = clientes.find(c => c.nome.toLowerCase() === nomeDigitado.toLowerCase());
-    
+    const nome = document.getElementById('venda-nome').value;
+    const cli = clientes.find(c => c.nome.toLowerCase() === nome.toLowerCase());
     if (cli) {
         document.getElementById('venda-tel').value = cli.telefone || '';
-        
-        const endCompleto = cli.endereco || '';
-        // Tenta separar Rua de Cidade pelo traço " - "
-        if (endCompleto.includes(" - ")) {
-            const partes = endCompleto.split(" - ");
-            const cidade = partes.pop(); // A última parte é a cidade
-            const rua = partes.join(" - "); // O resto é a rua
-            document.getElementById('venda-cidade').value = cidade;
-            document.getElementById('venda-endereco').value = rua;
+        const end = cli.endereco || '';
+        if (end.includes(" - ")) {
+            const partes = end.split(" - ");
+            document.getElementById('venda-cidade').value = partes.pop();
+            document.getElementById('venda-endereco').value = partes.join(" - ");
         } else {
-            document.getElementById('venda-endereco').value = endCompleto;
+            document.getElementById('venda-endereco').value = end;
             document.getElementById('venda-cidade').value = "";
         }
-        
         showToast("Dados carregados!", "blue");
     }
 }
 
 document.getElementById('form-venda').addEventListener('submit', async (e) => {
     e.preventDefault();
-    
     const nome = document.getElementById('venda-nome').value;
     const tel = document.getElementById('venda-tel').value;
     const rua = document.getElementById('venda-endereco').value;
@@ -116,107 +74,67 @@ document.getElementById('form-venda').addEventListener('submit', async (e) => {
     const tipo = document.getElementById('venda-tipo').value;
     const valor = document.getElementById('venda-valor').value;
     const obs = document.getElementById('venda-obs').value;
-
     const btn = document.querySelector('.btn-primary');
     const txtOriginal = btn.innerHTML;
-    btn.innerHTML = 'Salvando...';
-    btn.disabled = true;
+    btn.innerHTML = 'Salvando...'; btn.disabled = true;
 
     try {
         let cliente = clientes.find(c => c.nome.toLowerCase() === nome.toLowerCase());
         const servico = { data, servico: tipo, valor, obs };
-
         if (cliente) {
             if (!cliente.historico) cliente.historico = [];
             cliente.historico.unshift(servico);
-            cliente.telefone = tel;
-            cliente.endereco = rua; 
-            cliente.cidade = cid;
-            await salvarCliente(cliente);
-            showToast("Histórico atualizado!");
+            cliente.telefone = tel; cliente.endereco = rua; cliente.cidade = cid;
+            await salvarCliente(cliente); showToast("Histórico atualizado!");
         } else {
-            const novoCliente = { 
-                nome, telefone: tel, endereco: rua, cidade: cid, historico: [servico] 
-            };
-            await salvarCliente(novoCliente);
-            showToast("Novo cliente salvo!");
+            const novo = { nome, telefone: tel, endereco: rua, cidade: cid, historico: [servico] };
+            await salvarCliente(novo); showToast("Novo cliente salvo!");
         }
         document.getElementById('form-venda').reset();
         navegar('dashboard');
-    } catch (err) { 
-        console.error(err); 
-        alert("Erro: " + err.message); 
-    } finally {
-        btn.innerHTML = txtOriginal;
-        btn.disabled = false;
-    }
+    } catch (err) { console.error(err); alert("Erro: " + err.message); } 
+    finally { btn.innerHTML = txtOriginal; btn.disabled = false; }
 });
 
-// --- 5. RENDERIZAÇÃO ---
 function renderizarTudo() {
     const tbDash = document.getElementById('tabela-dashboard');
     const tbBase = document.getElementById('tabela-clientes-base');
     const dl = document.getElementById('lista-clientes-sugestao');
-    
-    tbDash.innerHTML = '';
-    tbBase.innerHTML = '';
-    dl.innerHTML = '';
-
+    tbDash.innerHTML = ''; tbBase.innerHTML = ''; dl.innerHTML = '';
     let kpi = { vencidos: 0, alerta: 0, receita: 0 };
-    const mesAtual = new Date().getMonth();
-    const anoAtual = new Date().getFullYear();
+    const mesAtual = new Date().getMonth(); const anoAtual = new Date().getFullYear();
 
     clientes.forEach(c => {
         const hist = Array.isArray(c.historico) ? c.historico : [];
-        hist.sort((a, b) => new Date(b.data || 0) - new Date(a.data || 0));
+        hist.sort((a, b) => new Date(b.data||0) - new Date(a.data||0));
+        const ult = hist.length > 0 ? hist[0].data : null;
+        const st = calcularStatus(ult);
+        if (st.st === 'vencido') kpi.vencidos++; else if (st.st === 'alerta') kpi.alerta++;
         
-        const ultData = hist.length > 0 ? hist[0].data : null;
-        const status = calcularStatus(ultData);
-
-        if (status.st === 'vencido') kpi.vencidos++;
-        else if (status.st === 'alerta') kpi.alerta++;
-
         hist.forEach(h => {
             if(h.data) {
-                const dh = new Date(h.data);
-                dh.setHours(dh.getHours() + 12);
-                if (dh.getMonth() === mesAtual && dh.getFullYear() === anoAtual) kpi.receita += parseFloat(h.valor || 0);
+                const dh = new Date(h.data); dh.setHours(dh.getHours()+12);
+                if (dh.getMonth() === mesAtual && dh.getFullYear() === anoAtual) kpi.receita += parseFloat(h.valor||0);
             }
         });
 
-        // Dashboard
-        if (status.st !== 'ok') {
-            const zap = `https://wa.me/55${c.telefone}?text=${encodeURIComponent(`Olá ${c.nome}, manutenção venceu.`)}`;
-            // CORREÇÃO DO ERRO: Usando formatarData aqui
-            tbDash.innerHTML += `
-                <tr>
-                    <td><strong>${c.nome}</strong></td>
-                    <td><span class="status status-${status.st}">${status.txt}</span></td>
-                    <td>${ultData ? formatarData(ultData) : '-'}</td>
-                    <td><a href="${zap}" target="_blank" class="btn-whatsapp"><i class="fab fa-whatsapp"></i></a></td>
-                </tr>`;
+        if (st.st !== 'ok') {
+            const zap = `https://wa.me/55${c.telefone}`;
+            tbDash.innerHTML += `<tr><td><strong>${c.nome}</strong></td><td><span class="status status-${st.st}">${st.txt}</span></td><td>${ult ? formatarData(ult) : '-'}</td><td><a href="${zap}" target="_blank" class="btn-whatsapp"><i class="fab fa-whatsapp"></i></a></td></tr>`;
         }
-
-        // Clientes
-        const zapLink = `https://wa.me/55${c.telefone}`;
-        tbBase.innerHTML += `
-            <tr>
-                <td>${c.nome}</td>
-                <td style="font-size:0.8rem; max-width:200px;">${c.endereco || '-'}</td>
-                <td><button class="btn-hist" onclick="abrirHistorico(${c.id})">Ver</button></td>
-            </tr>`;
-
+        tbBase.innerHTML += `<tr><td>${c.nome}</td><td style="font-size:0.8rem">${c.endereco||'-'}</td><td><button class="btn-hist" onclick="abrirHistorico(${c.id})">Ver</button></td></tr>`;
         dl.innerHTML += `<option value="${c.nome}">`;
     });
-
     document.getElementById('kpi-vencidos').innerText = kpi.vencidos;
     document.getElementById('kpi-alerta').innerText = kpi.alerta;
-    document.getElementById('kpi-faturamento').innerText = `R$ ${kpi.receita.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
 }
 
-// --- GRÁFICO ---
 window.atualizarGrafico = function(meses) {
     periodoGrafico = parseInt(meses);
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.innerText.includes(meses >= 12 ? (meses/12) + ' Ano' : meses + 'M')) btn.classList.add('active');
+    });
     renderizarGrafico();
 }
 
@@ -225,42 +143,39 @@ function renderizarGrafico() {
     const mesesNomes = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
     let labels = [], dados = [];
     const hoje = new Date();
+    let somaTotal = 0;
 
-    for(let i = periodoGrafico - 1; i >= 0; i--) {
-        const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+    for(let i=periodoGrafico-1; i>=0; i--) {
+        const d = new Date(hoje.getFullYear(), hoje.getMonth()-i, 1);
         let label = mesesNomes[d.getMonth()];
         if(periodoGrafico > 12) label += `/${d.getFullYear().toString().substr(2,2)}`;
         labels.push(label);
-        
         let total = 0;
         clientes.forEach(c => {
-            (c.historico || []).forEach(h => {
+            (c.historico||[]).forEach(h => {
                 if(h.data) {
-                    const dh = new Date(h.data);
-                    dh.setHours(dh.getHours() + 12);
-                    if(dh.getMonth() === d.getMonth() && dh.getFullYear() === d.getFullYear()) total += parseFloat(h.valor || 0);
+                    const dh = new Date(h.data); dh.setHours(dh.getHours()+12);
+                    if(dh.getMonth() === d.getMonth() && dh.getFullYear() === d.getFullYear()) total += parseFloat(h.valor||0);
                 }
             });
         });
         dados.push(total);
+        somaTotal += total;
     }
+
+    document.getElementById('kpi-faturamento').innerText = `R$ ${somaTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+    document.getElementById('kpi-faturamento').style.color = "#10b981";
 
     if(financeChartInstance) financeChartInstance.destroy();
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     const color = isDark ? '#fff' : '#2c3e50';
-    
     financeChartInstance = new Chart(ctx, {
         type: 'line',
-        data: { labels: labels, datasets: [{ label: 'Faturamento', data: dados, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', fill: true }] },
-        options: { 
-            responsive: true, maintainAspectRatio: false, 
-            plugins: { legend: { labels: { color } } },
-            scales: { y: { beginAtZero: true, ticks: { color } }, x: { ticks: { color }, grid: { display: false } } } 
-        }
+        data: { labels, datasets: [{ label: 'Faturamento', data: dados, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', fill: true }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color } } }, scales: { y: { beginAtZero: true, ticks: { color }, grid: { color: isDark ? '#333' : '#eee' } }, x: { ticks: { color, maxTicksLimit: 6 }, grid: { display: false } } } }
     });
 }
 
-// --- UTILS ---
 function setupMenuAndTheme() {
     document.querySelectorAll('.menu-nav a').forEach(link => {
         link.addEventListener('click', (e) => { e.preventDefault(); navegar(link.id.replace('link-', '')); });
@@ -279,11 +194,11 @@ function navegar(id) {
     document.getElementById('view-' + id).classList.remove('hidden');
     const titulos = {'dashboard': 'Visão Geral', 'vendas': 'Novo Serviço', 'clientes': 'Base de Clientes', 'financeiro': 'Recibos'};
     document.getElementById('page-title').innerText = titulos[id];
-    if (window.innerWidth <= 768) toggleSidebar();
+    if (window.innerWidth <= 768) toggleMenu();
     if (id === 'dashboard') renderizarGrafico();
 }
-function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); document.querySelector('.sidebar-overlay').classList.toggle('active'); }
-window.toggleSidebar = toggleSidebar;
+function toggleMenu() { document.getElementById('sidebar').classList.toggle('active'); document.querySelector('.sidebar-overlay').classList.toggle('active'); }
+window.toggleSidebar = toggleMenu;
 
 function calcularStatus(d) {
     if (!d) return { st: 'novo', txt: 'Novo' };
@@ -293,12 +208,7 @@ function calcularStatus(d) {
     if (diff <= 30) return { st: 'alerta', txt: `Vence ${diff}d` };
     return { st: 'ok', txt: 'Em dia' };
 }
-
-// CORREÇÃO: Nome padronizado para formatarData
-function formatarData(d) { 
-    if(!d) return '-';
-    const dt = new Date(d); dt.setMinutes(dt.getMinutes() + dt.getTimezoneOffset()); return dt.toLocaleDateString('pt-BR'); 
-}
+function formatarData(d) { if(!d) return '-'; const dt = new Date(d); dt.setMinutes(dt.getMinutes() + dt.getTimezoneOffset()); return dt.toLocaleDateString('pt-BR'); }
 function formatarTel(t) { if(!t) return ''; return t.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3'); }
 function showToast(msg, color="green") { const t = document.getElementById('toast'); t.innerText = msg; t.style.backgroundColor = color==="red"?"#e74c3c":"#10b981"; t.className="toast show"; setTimeout(() => t.className="toast", 3000); }
 
@@ -306,11 +216,12 @@ window.abrirHistorico = (id) => {
     const c = clientes.find(x => x.id === id); if(!c) return;
     document.getElementById('modal-nome-cliente').innerText = c.nome;
     document.getElementById('modal-endereco').innerText = c.endereco || "";
+    if(document.getElementById('modal-cidade')) document.getElementById('modal-cidade').innerText = "";
     document.getElementById('modal-telefone').innerText = formatarTel(c.telefone);
     let total = 0; const tl = document.getElementById('modal-timeline'); tl.innerHTML = '';
     (c.historico || []).forEach(h => {
         total += parseFloat(h.valor || 0);
-        // CORREÇÃO: Usando formatarData
+        // CORREÇÃO: Usando formatarData (Nome correto)
         tl.innerHTML += `<div class="timeline-item"><span class="t-date">${formatarData(h.data)}</span><span class="t-title">${h.servico}</span><p style="font-size:0.8rem;color:gray">${h.obs||''}</p><span class="t-val">R$ ${parseFloat(h.valor).toFixed(2)}</span></div>`;
     });
     document.getElementById('modal-total').innerText = `R$ ${total.toFixed(2)}`;
@@ -324,7 +235,7 @@ window.gerarRecibo = () => {
     document.getElementById('print-data').innerText = new Date().toLocaleDateString();
     document.getElementById('modal-recibo').classList.remove('hidden');
 };
-window.exportarCSV = () => alert("Em breve");
+window.exportarCSV = () => alert("Backup em desenvolvimento.");
 window.filtrarClientes = () => {
     const termo = document.getElementById('busca-cliente').value.toLowerCase();
     document.querySelectorAll('#tabela-clientes-base tr').forEach(tr => { tr.style.display = tr.innerText.toLowerCase().includes(termo) ? '' : 'none'; });
