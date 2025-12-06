@@ -19,7 +19,7 @@
 
     <aside class="sidebar" id="sidebar">
         <div class="logo">
-            <h2>HD System <span style="font-size:0.5em; color:var(--accent); vertical-align:super;">PRO</span></h2>
+            <h2>HD System</h2>
             <button class="btn-close-sidebar" onclick="toggleSidebar()"><i class="fas fa-times"></i></button>
         </div>
         
@@ -27,8 +27,14 @@
             <a href="#" id="link-dashboard" class="menu-item active" onclick="navegar('dashboard')">
                 <i class="fas fa-chart-pie"></i> Dashboard
             </a>
+            
+            <a href="#" id="link-leads" class="menu-item" onclick="navegar('leads')">
+                <i class="fas fa-bell"></i> Solicitações Site
+                <span id="badge-leads" class="badge hidden">0</span>
+            </a>
+
             <a href="#" id="link-vendas" class="menu-item" onclick="navegar('vendas')">
-                <i class="fas fa-plus-circle"></i> Novo Registro
+                <i class="fas fa-plus-circle"></i> Novo Serviço
             </a>
             <a href="#" id="link-clientes" class="menu-item" onclick="navegar('clientes')">
                 <i class="fas fa-address-book"></i> Clientes
@@ -73,32 +79,19 @@
             <section class="kpi-container">
                 <div class="card kpi kpi-negoc">
                     <div class="icon"><i class="fas fa-comments-dollar"></i></div>
-                    <div class="info">
-                        <h3>Em Negociação</h3>
-                        <p id="kpi-negoc">0</p>
-                    </div>
+                    <div class="info"><h3>Em Negociação</h3><p id="kpi-negoc">0</p></div>
                 </div>
-
                 <div class="card kpi kpi-vencido">
                     <div class="icon"><i class="fas fa-exclamation-circle"></i></div>
-                    <div class="info">
-                        <h3>Vencidos</h3>
-                        <p id="kpi-vencidos">0</p>
-                    </div>
+                    <div class="info"><h3>Vencidos</h3><p id="kpi-vencidos">0</p></div>
                 </div>
                 <div class="card kpi kpi-alerta">
                     <div class="icon"><i class="fas fa-clock"></i></div>
-                    <div class="info">
-                        <h3>A Vencer (30d)</h3>
-                        <p id="kpi-alerta">0</p>
-                    </div>
+                    <div class="info"><h3>A Vencer (30d)</h3><p id="kpi-alerta">0</p></div>
                 </div>
                 <div class="card kpi kpi-receita">
                     <div class="icon"><i class="fas fa-dollar-sign"></i></div>
-                    <div class="info">
-                        <h3>Faturamento</h3>
-                        <p id="kpi-faturamento">R$ 0,00</p>
-                    </div>
+                    <div class="info"><h3>Faturamento</h3><p id="kpi-faturamento">R$ 0,00</p></div>
                 </div>
             </section>
 
@@ -117,20 +110,34 @@
             </section>
 
             <section class="table-container">
-                <div class="table-header">
-                    <h2>Próximas Manutenções & Orçamentos</h2>
-                </div>
+                <div class="table-header"><h2>Próximas Manutenções</h2></div>
                 <div class="table-responsive">
                     <table>
+                        <thead><tr><th>Cliente</th><th>Status</th><th>Detalhe</th><th>WhatsApp</th></tr></thead>
+                        <tbody id="tabela-dashboard"></tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+        <div id="view-leads" class="view-section hidden">
+            <section class="table-container">
+                <div class="table-header">
+                    <h2>Solicitações do Site (Agendamentos)</h2>
+                    <button class="btn-hist" onclick="carregarLeads()" style="background:var(--gray);"><i class="fas fa-sync"></i> Atualizar</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table-leads">
                         <thead>
                             <tr>
+                                <th>Data Pedido</th>
                                 <th>Cliente</th>
-                                <th>Status</th>
-                                <th>Detalhe</th>
-                                <th>WhatsApp</th>
+                                <th>Serviço Solicitado</th>
+                                <th>Ação</th>
                             </tr>
                         </thead>
-                        <tbody id="tabela-dashboard"></tbody>
+                        <tbody id="tabela-leads">
+                            </tbody>
                     </table>
                 </div>
             </section>
@@ -138,10 +145,7 @@
 
         <div id="view-vendas" class="view-section hidden">
             <section class="card form-section">
-                <div class="form-header">
-                    <h3>Novo Registro</h3>
-                    <p>Salve um serviço realizado ou um orçamento aberto.</p>
-                </div>
+                <div class="form-header"><h3>Novo Registro</h3><p>Salve um serviço realizado ou um orçamento aberto.</p></div>
                 <form id="form-venda">
                     <div class="form-grid">
                         <div class="input-group">
@@ -149,24 +153,10 @@
                             <input type="text" id="venda-nome" placeholder="Busque ou digite..." required list="lista-clientes-sugestao" onchange="autoPreencherDados()">
                             <datalist id="lista-clientes-sugestao"></datalist>
                         </div>
-                        <div class="input-group">
-                            <label>WhatsApp</label>
-                            <input type="tel" id="venda-tel" placeholder="119..." required>
-                        </div>
-                        
-                        <div class="input-group full-width">
-                            <label>Endereço Completo</label>
-                            <input type="text" id="venda-endereco" required>
-                        </div>
-                        <div class="input-group full-width">
-                            <label>Cidade</label>
-                            <input type="text" id="venda-cidade" required>
-                        </div>
-
-                        <div class="input-group">
-                            <label>Data</label>
-                            <input type="date" id="venda-data" required>
-                        </div>
+                        <div class="input-group"><label>WhatsApp</label><input type="tel" id="venda-tel" placeholder="119..." required></div>
+                        <div class="input-group full-width"><label>Endereço Completo</label><input type="text" id="venda-endereco" required></div>
+                        <div class="input-group full-width"><label>Cidade</label><input type="text" id="venda-cidade" required></div>
+                        <div class="input-group"><label>Data</label><input type="date" id="venda-data" required></div>
                         
                         <div class="input-group">
                             <label>Tipo de Registro</label>
@@ -179,14 +169,8 @@
                             </select>
                         </div>
                         
-                        <div class="input-group">
-                            <label>Valor (R$)</label>
-                            <input type="number" id="venda-valor" step="0.01" placeholder="0.00" required>
-                        </div>
-                        <div class="input-group full-width">
-                            <label>Detalhes / Observação</label>
-                            <input type="text" id="venda-obs" placeholder="Ex: Aguardando aprovação...">
-                        </div>
+                        <div class="input-group"><label>Valor (R$)</label><input type="number" id="venda-valor" step="0.01" placeholder="0.00" required></div>
+                        <div class="input-group full-width"><label>Detalhes / Observação</label><input type="text" id="venda-obs" placeholder="Ex: Aguardando aprovação..."></div>
                     </div>
                     <button type="submit" class="btn-primary">Salvar Registro</button>
                 </form>
@@ -197,20 +181,11 @@
             <section class="table-container">
                 <div class="table-header with-search">
                     <h2>Base de Clientes</h2>
-                    <div class="search-box">
-                        <i class="fas fa-search"></i>
-                        <input type="text" id="busca-cliente" placeholder="Buscar..." onkeyup="filtrarClientes()">
-                    </div>
+                    <div class="search-box"><i class="fas fa-search"></i><input type="text" id="busca-cliente" placeholder="Buscar..." onkeyup="filtrarClientes()"></div>
                 </div>
                 <div class="table-responsive">
                     <table>
-                        <thead>
-                            <tr>
-                                <th>Nome</th>
-                                <th>Endereço</th>
-                                <th>Ação</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th>Nome</th><th>Endereço</th><th>Ação</th></tr></thead>
                         <tbody id="tabela-clientes-base"></tbody>
                     </table>
                 </div>
@@ -222,20 +197,11 @@
                 <h3>Gerador de Recibo</h3>
                 <form id="form-recibo" onsubmit="event.preventDefault(); gerarRecibo();">
                     <div class="form-grid">
-                        <div class="input-group">
-                            <label>Nome do Cliente</label>
-                            <input type="text" id="rec-nome" required>
-                        </div>
-                        <div class="input-group">
-                            <label>Valor (R$)</label>
-                            <input type="number" id="rec-valor" step="0.01" required>
-                        </div>
-                        <div class="input-group full-width">
-                            <label>Referente a</label>
-                            <input type="text" id="rec-desc" required>
-                        </div>
+                        <div class="input-group"><label>Nome</label><input type="text" id="rec-nome" required></div>
+                        <div class="input-group"><label>Valor</label><input type="number" id="rec-valor" step="0.01" required></div>
+                        <div class="input-group full-width"><label>Referente a</label><input type="text" id="rec-desc" required></div>
                     </div>
-                    <button class="btn-secondary"><i class="fas fa-print"></i> Gerar para Impressão</button>
+                    <button class="btn-secondary"><i class="fas fa-print"></i> Gerar Recibo</button>
                 </form>
             </section>
         </div>
@@ -243,21 +209,13 @@
 
     <div id="modal-historico" class="modal-overlay hidden">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modal-nome-cliente">Histórico</h2>
-                <button onclick="fecharModal('modal-historico')" class="btn-close"><i class="fas fa-times"></i></button>
-            </div>
+            <div class="modal-header"><h2 id="modal-nome-cliente">Histórico</h2><button onclick="fecharModal('modal-historico')" class="btn-close"><i class="fas fa-times"></i></button></div>
             <div class="modal-body">
                 <div class="client-details" style="margin-bottom:15px; background:var(--bg); padding:10px; border-radius:8px;">
                     <p style="margin-bottom:5px"><i class="fas fa-map-marker-alt" style="color:var(--accent)"></i> <span id="modal-endereco"></span></p>
                     <p><i class="fas fa-phone" style="color:var(--green)"></i> <span id="modal-telefone"></span></p>
                 </div>
-                <div class="client-stats">
-                    <div class="stat-box">
-                        <span class="label">Total Pago</span>
-                        <span class="value" id="modal-total">R$ 0,00</span>
-                    </div>
-                </div>
+                <div class="client-stats"><div class="stat-box"><span class="label">Total Pago</span><span class="value" id="modal-total">R$ 0,00</span></div></div>
                 <div class="timeline" id="modal-timeline"></div>
             </div>
         </div>
@@ -265,23 +223,15 @@
 
     <div id="modal-recibo" class="modal-overlay hidden">
         <div class="modal-content paper-receipt">
-            <div class="receipt-header">
-                <h2>RECIBO</h2>
-                <p>HD AQUECEDORES</p>
-            </div>
+            <div class="receipt-header"><h2>RECIBO</h2><p>HD AQUECEDORES</p></div>
             <div class="receipt-body">
                 <p>Recebemos de <strong id="print-nome"></strong></p>
                 <p>A quantia de <strong id="print-valor" style="font-size:1.4rem;"></strong></p>
                 <p>Referente a: <span id="print-desc"></span></p>
                 <p>Data: <span id="print-data"></span></p>
             </div>
-            <div class="receipt-footer">
-                <div class="signature">Assinatura</div>
-            </div>
-            <div class="no-print" style="margin-top:20px; text-align:center;">
-                <button onclick="window.print()" class="btn-primary">Imprimir / PDF</button>
-                <button onclick="fecharModal('modal-recibo')" class="btn-link danger">Fechar</button>
-            </div>
+            <div class="receipt-footer"><div class="signature">Assinatura</div></div>
+            <div class="no-print" style="margin-top:20px; text-align:center;"><button onclick="window.print()" class="btn-primary">Imprimir</button><button onclick="fecharModal('modal-recibo')" class="btn-link danger">Fechar</button></div>
         </div>
     </div>
 
