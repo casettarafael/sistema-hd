@@ -28,7 +28,7 @@
                 <i class="fas fa-chart-pie"></i> Dashboard
             </a>
             <a href="#" id="link-vendas" class="menu-item" onclick="navegar('vendas')">
-                <i class="fas fa-plus-circle"></i> Novo Serviço
+                <i class="fas fa-plus-circle"></i> Novo Registro
             </a>
             <a href="#" id="link-clientes" class="menu-item" onclick="navegar('clientes')">
                 <i class="fas fa-address-book"></i> Clientes
@@ -71,6 +71,14 @@
 
         <div id="view-dashboard" class="view-section">
             <section class="kpi-container">
+                <div class="card kpi kpi-negoc">
+                    <div class="icon"><i class="fas fa-comments-dollar"></i></div>
+                    <div class="info">
+                        <h3>Em Negociação</h3>
+                        <p id="kpi-negoc">0</p>
+                    </div>
+                </div>
+
                 <div class="card kpi kpi-vencido">
                     <div class="icon"><i class="fas fa-exclamation-circle"></i></div>
                     <div class="info">
@@ -88,7 +96,7 @@
                 <div class="card kpi kpi-receita">
                     <div class="icon"><i class="fas fa-dollar-sign"></i></div>
                     <div class="info">
-                        <h3>Faturamento (Mês)</h3>
+                        <h3>Faturamento</h3>
                         <p id="kpi-faturamento">R$ 0,00</p>
                     </div>
                 </div>
@@ -110,7 +118,7 @@
 
             <section class="table-container">
                 <div class="table-header">
-                    <h2>Próximas Manutenções</h2>
+                    <h2>Próximas Manutenções & Orçamentos</h2>
                 </div>
                 <div class="table-responsive">
                     <table>
@@ -118,7 +126,7 @@
                             <tr>
                                 <th>Cliente</th>
                                 <th>Status</th>
-                                <th>Vencimento</th>
+                                <th>Detalhe</th>
                                 <th>WhatsApp</th>
                             </tr>
                         </thead>
@@ -131,8 +139,8 @@
         <div id="view-vendas" class="view-section hidden">
             <section class="card form-section">
                 <div class="form-header">
-                    <h3>Registrar Serviço</h3>
-                    <p>Preencha para atualizar o histórico.</p>
+                    <h3>Novo Registro</h3>
+                    <p>Salve um serviço realizado ou um orçamento aberto.</p>
                 </div>
                 <form id="form-venda">
                     <div class="form-grid">
@@ -147,7 +155,7 @@
                         </div>
                         
                         <div class="input-group full-width">
-                            <label>Endereço Completo (Rua, Número, Bairro)</label>
+                            <label>Endereço Completo</label>
                             <input type="text" id="venda-endereco" required>
                         </div>
                         <div class="input-group full-width">
@@ -156,25 +164,28 @@
                         </div>
 
                         <div class="input-group">
-                            <label>Data do Serviço</label>
+                            <label>Data</label>
                             <input type="date" id="venda-data" required>
                         </div>
+                        
                         <div class="input-group">
-                            <label>Tipo de Serviço</label>
+                            <label>Tipo de Registro</label>
                             <select id="venda-tipo">
-                                <option>Manutenção Preventiva</option>
-                                <option>Manutenção Corretiva</option>
-                                <option>Instalação Nova</option>
-                                <option>Visita Técnica</option>
+                                <option value="Orçamento">Orçamento / Cotação</option>
+                                <option value="Manutenção Preventiva">Manutenção Preventiva</option>
+                                <option value="Manutenção Corretiva">Manutenção Corretiva</option>
+                                <option value="Instalação Nova">Instalação Nova</option>
+                                <option value="Visita Técnica">Visita Técnica</option>
                             </select>
                         </div>
+                        
                         <div class="input-group">
                             <label>Valor (R$)</label>
                             <input type="number" id="venda-valor" step="0.01" placeholder="0.00" required>
                         </div>
                         <div class="input-group full-width">
-                            <label>Detalhes / Peças</label>
-                            <input type="text" id="venda-obs" placeholder="Ex: Trocado pilha...">
+                            <label>Detalhes / Observação</label>
+                            <input type="text" id="venda-obs" placeholder="Ex: Aguardando aprovação...">
                         </div>
                     </div>
                     <button type="submit" class="btn-primary">Salvar Registro</button>
@@ -197,7 +208,7 @@
                             <tr>
                                 <th>Nome</th>
                                 <th>Endereço</th>
-                                <th>Histórico</th>
+                                <th>Ação</th>
                             </tr>
                         </thead>
                         <tbody id="tabela-clientes-base"></tbody>
@@ -243,7 +254,7 @@
                 </div>
                 <div class="client-stats">
                     <div class="stat-box">
-                        <span class="label">Total Gasto</span>
+                        <span class="label">Total Pago</span>
                         <span class="value" id="modal-total">R$ 0,00</span>
                     </div>
                 </div>

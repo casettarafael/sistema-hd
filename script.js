@@ -1,25 +1,48 @@
-// --- CONFIGURAÇÃO ---
+// --- 1. CONFIGURAÇÃO DO SUPABASE ---
 const SUPABASE_URL = 'https://lhfhrrxhiirnayclvxyc.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxoZmhycnhoaWlybmF5Y2x2eHljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ5NTc0NzUsImV4cCI6MjA4MDUzMzQ3NX0.gdk9mgFuojkQkzmIr4O9KzE_r8y0TMcYnyXMn9DG2n4';
 
+// Cliente Supabase
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 let clientes = [];
 let financeChartInstance = null;
 let periodoGrafico = 6;
 
+// --- 2. INICIALIZAÇÃO ---
 document.addEventListener('DOMContentLoaded', async () => {
     setupMenuAndTheme();
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     document.getElementById('data-hoje').innerText = new Date().toLocaleDateString('pt-BR', options);
-    try { await carregarDadosDoBanco(); } catch (e) { console.error("Erro:", e); showToast("Erro conexão", "red"); }
+
+    console.log("Iniciando sistema...");
+    
+    try {
+        await carregarDadosDoBanco();
+    } catch (e) {
+        console.error("Erro fatal:", e);
+        alert("Erro de conexão com o servidor. Verifique sua internet.");
+    }
 });
 
+// --- 3. BANCO DE DADOS ---
 async function carregarDadosDoBanco() {
-    const { data, error } = await _supabase.from('clientes').select('*').order('id', { ascending: false });
-    if (error) { console.error(error); return; }
+    const { data, error } = await _supabase
+        .from('clientes')
+        .select('*')
+        .order('id', { ascending: false });
+
+    if (error) {
+        console.error("Erro Supabase:", error);
+        showToast("Erro ao conectar: " + error.message, "red");
+        return;
+    }
+
     clientes = data || [];
+    console.log("Dados carregados:", clientes.length);
+    
     if (clientes.length === 0) {
-        setTimeout(async () => { if(confirm("Banco vazio. Carregar dados teste?")) await carregarDadosFicticios(); }, 500);
+        // Se vazio, não faz nada, espera cadastro
     } else {
         renderizarTudo();
         renderizarGrafico();
@@ -28,27 +51,48 @@ async function carregarDadosDoBanco() {
 
 async function salvarCliente(clienteObj) {
     let error = null;
+    
+    // Tratamento de Endereço
     let enderecoFinal = clienteObj.endereco || "";
     if (clienteObj.cidade && !enderecoFinal.toLowerCase().includes(clienteObj.cidade.toLowerCase())) {
         enderecoFinal = `${enderecoFinal} - ${clienteObj.cidade}`;
     }
-    const dados = { nome: clienteObj.nome, telefone: clienteObj.telefone, endereco: enderecoFinal, historico: clienteObj.historico };
-    
+
+    // Garante que histórico seja um array válido antes de enviar
+    const historicoSeguro = Array.isArray(clienteObj.historico) ? clienteObj.historico : [];
+
+    const dadosParaSalvar = {
+        nome: clienteObj.nome,
+        telefone: clienteObj.telefone,
+        endereco: enderecoFinal,
+        historico: historicoSeguro // Envia o histórico corrigido
+    };
+
     if (clienteObj.id) {
-        const res = await _supabase.from('clientes').update(dados).eq('id', clienteObj.id);
+        // Atualizar
+        const res = await _supabase.from('clientes').update(dadosParaSalvar).eq('id', clienteObj.id);
         error = res.error;
     } else {
-        const res = await _supabase.from('clientes').insert([dados]);
+        // Criar Novo
+        const res = await _supabase.from('clientes').insert([dadosParaSalvar]);
         error = res.error;
     }
-    if (error) { alert("Erro ao salvar: " + error.message); return false; }
+
+    if (error) {
+        console.error("Erro ao salvar:", error);
+        alert("Erro ao salvar: " + error.message);
+        return false;
+    }
+    
     await carregarDadosDoBanco();
     return true;
 }
 
+// --- 4. FORMULÁRIO DE VENDA/ORÇAMENTO ---
 window.autoPreencherDados = function() {
-    const nome = document.getElementById('venda-nome').value;
-    const cli = clientes.find(c => c.nome.toLowerCase() === nome.toLowerCase());
+    const nomeDigitado = document.getElementById('venda-nome').value;
+    const cli = clientes.find(c => c.nome.toLowerCase() === nomeDigitado.toLowerCase());
+    
     if (cli) {
         document.getElementById('venda-tel').value = cli.telefone || '';
         const end = cli.endereco || '';
@@ -60,12 +104,13 @@ window.autoPreencherDados = function() {
             document.getElementById('venda-endereco').value = end;
             document.getElementById('venda-cidade').value = "";
         }
-        showToast("Dados carregados!", "blue");
+        showToast("Cliente encontrado!", "blue");
     }
 }
 
 document.getElementById('form-venda').addEventListener('submit', async (e) => {
     e.preventDefault();
+    
     const nome = document.getElementById('venda-nome').value;
     const tel = document.getElementById('venda-tel').value;
     const rua = document.getElementById('venda-endereco').value;
@@ -74,61 +119,142 @@ document.getElementById('form-venda').addEventListener('submit', async (e) => {
     const tipo = document.getElementById('venda-tipo').value;
     const valor = document.getElementById('venda-valor').value;
     const obs = document.getElementById('venda-obs').value;
+
     const btn = document.querySelector('.btn-primary');
     const txtOriginal = btn.innerHTML;
-    btn.innerHTML = 'Salvando...'; btn.disabled = true;
+    btn.innerHTML = 'Salvando...';
+    btn.disabled = true;
 
     try {
         let cliente = clientes.find(c => c.nome.toLowerCase() === nome.toLowerCase());
         const servico = { data, servico: tipo, valor, obs };
+
         if (cliente) {
-            if (!cliente.historico) cliente.historico = [];
+            // Garante array antes de dar unshift
+            if (!Array.isArray(cliente.historico)) cliente.historico = [];
+            
             cliente.historico.unshift(servico);
-            cliente.telefone = tel; cliente.endereco = rua; cliente.cidade = cid;
-            await salvarCliente(cliente); showToast("Histórico atualizado!");
+            cliente.telefone = tel;
+            cliente.endereco = rua;
+            cliente.cidade = cid;
+            await salvarCliente(cliente);
+            showToast(tipo === 'Orçamento' ? "Orçamento salvo!" : "Serviço salvo!");
         } else {
-            const novo = { nome, telefone: tel, endereco: rua, cidade: cid, historico: [servico] };
-            await salvarCliente(novo); showToast("Novo cliente salvo!");
+            const novoCliente = { 
+                nome, telefone: tel, endereco: rua, cidade: cid, historico: [servico] 
+            };
+            await salvarCliente(novoCliente);
+            showToast("Novo cliente cadastrado!");
         }
         document.getElementById('form-venda').reset();
         navegar('dashboard');
-    } catch (err) { console.error(err); alert("Erro: " + err.message); } 
-    finally { btn.innerHTML = txtOriginal; btn.disabled = false; }
+
+    } catch (err) {
+        console.error("Erro JS:", err);
+        alert("Erro no código: " + err.message);
+    } finally {
+        btn.innerHTML = txtOriginal;
+        btn.disabled = false;
+    }
 });
 
+// --- 5. RENDERIZAÇÃO ---
 function renderizarTudo() {
     const tbDash = document.getElementById('tabela-dashboard');
     const tbBase = document.getElementById('tabela-clientes-base');
     const dl = document.getElementById('lista-clientes-sugestao');
-    tbDash.innerHTML = ''; tbBase.innerHTML = ''; dl.innerHTML = '';
-    let kpi = { vencidos: 0, alerta: 0, receita: 0 };
-    const mesAtual = new Date().getMonth(); const anoAtual = new Date().getFullYear();
+    
+    tbDash.innerHTML = '';
+    tbBase.innerHTML = '';
+    dl.innerHTML = '';
+
+    let kpi = { vencidos: 0, alerta: 0, receita: 0, negociacao: 0 };
+    const mesAtual = new Date().getMonth();
+    const anoAtual = new Date().getFullYear();
 
     clientes.forEach(c => {
         const hist = Array.isArray(c.historico) ? c.historico : [];
-        hist.sort((a, b) => new Date(b.data||0) - new Date(a.data||0));
-        const ult = hist.length > 0 ? hist[0].data : null;
-        const st = calcularStatus(ult);
-        if (st.st === 'vencido') kpi.vencidos++; else if (st.st === 'alerta') kpi.alerta++;
         
+        // Ordena por data
+        hist.sort((a, b) => new Date(b.data || 0) - new Date(a.data || 0));
+        
+        const ult = hist.length > 0 ? hist[0] : null;
+        const ultData = ult ? ult.data : null;
+        const ultTipo = ult ? ult.servico : null; // Pega o tipo do último serviço
+
+        // Passamos o tipo para calcular status corretamente
+        const st = calcularStatus(ultData, ultTipo);
+
+        if (st.st === 'vencido') kpi.vencidos++;
+        else if (st.st === 'alerta') kpi.alerta++;
+        else if (st.st === 'negociacao') kpi.negociacao++; // Conta negociação
+
+        // Soma Faturamento (Ignora Orçamentos)
         hist.forEach(h => {
-            if(h.data) {
-                const dh = new Date(h.data); dh.setHours(dh.getHours()+12);
-                if (dh.getMonth() === mesAtual && dh.getFullYear() === anoAtual) kpi.receita += parseFloat(h.valor||0);
+            if(h.data && h.servico !== 'Orçamento') {
+                const dh = new Date(h.data);
+                dh.setHours(dh.getHours() + 12);
+                if (dh.getMonth() === mesAtual && dh.getFullYear() === anoAtual) kpi.receita += parseFloat(h.valor || 0);
             }
         });
 
+        // Dashboard - Mostra Vencidos, Alertas e Orçamentos
         if (st.st !== 'ok') {
-            const zap = `https://wa.me/55${c.telefone}`;
-            tbDash.innerHTML += `<tr><td><strong>${c.nome}</strong></td><td><span class="status status-${st.st}">${st.txt}</span></td><td>${ult ? formatarData(ult) : '-'}</td><td><a href="${zap}" target="_blank" class="btn-whatsapp"><i class="fab fa-whatsapp"></i></a></td></tr>`;
+            const zap = `https://wa.me/55${c.telefone}?text=${encodeURIComponent(`Olá ${c.nome}, sobre seu serviço...`)}`;
+            
+            // Ícone diferente para orçamento ou cobrança
+            const iconZap = st.st === 'negociacao' ? '<i class="fas fa-comment-dollar"></i>' : '<i class="fab fa-whatsapp"></i>';
+            
+            tbDash.innerHTML += `
+                <tr>
+                    <td><strong>${c.nome}</strong></td>
+                    <td><span class="status status-${st.st}">${st.txt}</span></td>
+                    <td style="font-size:0.8rem">${ultTipo || '-'}</td>
+                    <td><a href="${zap}" target="_blank" class="btn-whatsapp">${iconZap}</a></td>
+                </tr>`;
         }
-        tbBase.innerHTML += `<tr><td>${c.nome}</td><td style="font-size:0.8rem">${c.endereco||'-'}</td><td><button class="btn-hist" onclick="abrirHistorico(${c.id})">Ver</button></td></tr>`;
+
+        // Base Clientes
+        tbBase.innerHTML += `
+            <tr>
+                <td>${c.nome}</td>
+                <td style="font-size:0.8rem; max-width:200px;">${c.endereco || '-'}</td>
+                <td><button class="btn-hist" onclick="abrirHistorico(${c.id})">Ver</button></td>
+            </tr>`;
+
         dl.innerHTML += `<option value="${c.nome}">`;
     });
+
+    // Atualiza Cards
     document.getElementById('kpi-vencidos').innerText = kpi.vencidos;
     document.getElementById('kpi-alerta').innerText = kpi.alerta;
+    
+    // Verifica se o elemento de negociação existe antes de atualizar
+    if(document.getElementById('kpi-negoc')) {
+        document.getElementById('kpi-negoc').innerText = kpi.negociacao;
+    }
+    
+    const elFat = document.getElementById('kpi-faturamento');
+    elFat.innerText = `R$ ${kpi.receita.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+    elFat.style.color = "#10b981";
 }
 
+// --- UTILS ---
+function calcularStatus(d, tipo) {
+    if (!d) return { st: 'novo', txt: 'Novo' };
+    
+    // Se o último registro for orçamento, status é negociação
+    if (tipo === 'Orçamento') return { st: 'negociacao', txt: 'Em Aberto' };
+
+    const p = new Date(d); p.setFullYear(p.getFullYear() + 1);
+    const diff = Math.ceil((p - new Date()) / 86400000);
+    
+    if (diff <= 0) return { st: 'vencido', txt: `Vencido` };
+    if (diff <= 30) return { st: 'alerta', txt: `Vence ${diff}d` };
+    return { st: 'ok', txt: 'Em dia' };
+}
+
+// Resto das funções (Gráfico, Menu, etc)
 window.atualizarGrafico = function(meses) {
     periodoGrafico = parseInt(meses);
     document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -143,36 +269,36 @@ function renderizarGrafico() {
     const mesesNomes = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
     let labels = [], dados = [];
     const hoje = new Date();
-    let somaTotal = 0;
-
-    for(let i=periodoGrafico-1; i>=0; i--) {
-        const d = new Date(hoje.getFullYear(), hoje.getMonth()-i, 1);
+    
+    for(let i = periodoGrafico - 1; i >= 0; i--) {
+        const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
         let label = mesesNomes[d.getMonth()];
         if(periodoGrafico > 12) label += `/${d.getFullYear().toString().substr(2,2)}`;
         labels.push(label);
-        let total = 0;
+        
+        let totalMes = 0;
         clientes.forEach(c => {
-            (c.historico||[]).forEach(h => {
-                if(h.data) {
-                    const dh = new Date(h.data); dh.setHours(dh.getHours()+12);
-                    if(dh.getMonth() === d.getMonth() && dh.getFullYear() === d.getFullYear()) total += parseFloat(h.valor||0);
+            (c.historico || []).forEach(h => {
+                if(h.data && h.servico !== 'Orçamento') {
+                    const dh = new Date(h.data);
+                    dh.setHours(dh.getHours() + 12);
+                    if(dh.getMonth() === d.getMonth() && dh.getFullYear() === d.getFullYear()) {
+                        totalMes += parseFloat(h.valor || 0);
+                    }
                 }
             });
         });
-        dados.push(total);
-        somaTotal += total;
+        dados.push(totalMes);
     }
-
-    document.getElementById('kpi-faturamento').innerText = `R$ ${somaTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-    document.getElementById('kpi-faturamento').style.color = "#10b981";
 
     if(financeChartInstance) financeChartInstance.destroy();
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     const color = isDark ? '#fff' : '#2c3e50';
+    
     financeChartInstance = new Chart(ctx, {
         type: 'line',
-        data: { labels, datasets: [{ label: 'Faturamento', data: dados, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', fill: true }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color } } }, scales: { y: { beginAtZero: true, ticks: { color }, grid: { color: isDark ? '#333' : '#eee' } }, x: { ticks: { color, maxTicksLimit: 6 }, grid: { display: false } } } }
+        data: { labels: labels, datasets: [{ label: 'Faturamento', data: dados, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', fill: true, pointRadius: periodoGrafico > 30 ? 2 : 5 }] },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color }, grid: { color: isDark ? '#333' : '#eee' } }, x: { ticks: { color, maxTicksLimit: 6 }, grid: { display: false } } }, plugins: { legend: { labels: { color } } } }
     });
 }
 
@@ -194,20 +320,12 @@ function navegar(id) {
     document.getElementById('view-' + id).classList.remove('hidden');
     const titulos = {'dashboard': 'Visão Geral', 'vendas': 'Novo Serviço', 'clientes': 'Base de Clientes', 'financeiro': 'Recibos'};
     document.getElementById('page-title').innerText = titulos[id];
-    if (window.innerWidth <= 768) toggleMenu();
+    if (window.innerWidth <= 768) toggleSidebar();
     if (id === 'dashboard') renderizarGrafico();
 }
-function toggleMenu() { document.getElementById('sidebar').classList.toggle('active'); document.querySelector('.sidebar-overlay').classList.toggle('active'); }
-window.toggleSidebar = toggleMenu;
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); document.querySelector('.sidebar-overlay').classList.toggle('active'); }
+window.toggleSidebar = toggleSidebar;
 
-function calcularStatus(d) {
-    if (!d) return { st: 'novo', txt: 'Novo' };
-    const p = new Date(d); p.setFullYear(p.getFullYear() + 1);
-    const diff = Math.ceil((p - new Date()) / 86400000);
-    if (diff <= 0) return { st: 'vencido', txt: `Vencido` };
-    if (diff <= 30) return { st: 'alerta', txt: `Vence ${diff}d` };
-    return { st: 'ok', txt: 'Em dia' };
-}
 function formatarData(d) { if(!d) return '-'; const dt = new Date(d); dt.setMinutes(dt.getMinutes() + dt.getTimezoneOffset()); return dt.toLocaleDateString('pt-BR'); }
 function formatarTel(t) { if(!t) return ''; return t.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3'); }
 function showToast(msg, color="green") { const t = document.getElementById('toast'); t.innerText = msg; t.style.backgroundColor = color==="red"?"#e74c3c":"#10b981"; t.className="toast show"; setTimeout(() => t.className="toast", 3000); }
@@ -216,12 +334,10 @@ window.abrirHistorico = (id) => {
     const c = clientes.find(x => x.id === id); if(!c) return;
     document.getElementById('modal-nome-cliente').innerText = c.nome;
     document.getElementById('modal-endereco').innerText = c.endereco || "";
-    if(document.getElementById('modal-cidade')) document.getElementById('modal-cidade').innerText = "";
     document.getElementById('modal-telefone').innerText = formatarTel(c.telefone);
     let total = 0; const tl = document.getElementById('modal-timeline'); tl.innerHTML = '';
     (c.historico || []).forEach(h => {
-        total += parseFloat(h.valor || 0);
-        // CORREÇÃO: Usando formatarData (Nome correto)
+        if(h.servico !== 'Orçamento') total += parseFloat(h.valor || 0);
         tl.innerHTML += `<div class="timeline-item"><span class="t-date">${formatarData(h.data)}</span><span class="t-title">${h.servico}</span><p style="font-size:0.8rem;color:gray">${h.obs||''}</p><span class="t-val">R$ ${parseFloat(h.valor).toFixed(2)}</span></div>`;
     });
     document.getElementById('modal-total').innerText = `R$ ${total.toFixed(2)}`;
@@ -235,7 +351,7 @@ window.gerarRecibo = () => {
     document.getElementById('print-data').innerText = new Date().toLocaleDateString();
     document.getElementById('modal-recibo').classList.remove('hidden');
 };
-window.exportarCSV = () => alert("Backup em desenvolvimento.");
+window.exportarCSV = () => alert("Em breve");
 window.filtrarClientes = () => {
     const termo = document.getElementById('busca-cliente').value.toLowerCase();
     document.querySelectorAll('#tabela-clientes-base tr').forEach(tr => { tr.style.display = tr.innerText.toLowerCase().includes(termo) ? '' : 'none'; });

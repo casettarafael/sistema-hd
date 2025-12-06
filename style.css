@@ -27,14 +27,15 @@ h1 { font-size: 1.5rem; font-weight: 700; }
 .hidden { display: none !important; }
 .view-section { animation: fadeIn 0.4s ease-out; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-.kpi-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px; }
+.kpi-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 25px; }
 .card { background: var(--card-bg); border-radius: 12px; padding: 20px; box-shadow: var(--shadow); border: 1px solid var(--border); }
 .kpi { display: flex; align-items: center; border-left: 4px solid transparent; }
 .kpi .icon { width: 45px; height: 45px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; margin-right: 15px; background: rgba(0,0,0,0.05); }
 .kpi-vencido { border-color: var(--accent); } .kpi-vencido .icon { color: var(--accent); background: rgba(231,76,60,0.1); }
 .kpi-alerta { border-color: var(--yellow); } .kpi-alerta .icon { color: var(--yellow); background: rgba(245,158,11,0.1); }
 .kpi-receita { border-color: var(--green); } .kpi-receita .icon { color: var(--green); background: rgba(16,185,129,0.1); }
-.kpi .info p { font-size: 1.4rem; font-weight: 800; }
+.kpi-negoc { border-color: var(--blue); } .kpi-negoc .icon { color: var(--blue); background: rgba(59, 130, 246, 0.1); }
+.kpi .info p { font-size: 1.3rem; font-weight: 800; }
 .chart-container { margin-bottom: 25px; padding: 15px; height: 350px; position: relative; }
 .chart-header { margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
 .chart-header h3 { font-size: 1rem; margin: 0; }
@@ -52,6 +53,7 @@ th { color: var(--text-muted); text-transform: uppercase; font-size: 0.75rem; wh
 .status-vencido { background: rgba(231,76,60,0.1); color: var(--accent); }
 .status-alerta { background: rgba(245,158,11,0.1); color: var(--yellow); }
 .status-ok { background: rgba(16,185,129,0.1); color: var(--green); }
+.status-negociacao { background: rgba(59, 130, 246, 0.1); color: var(--blue); }
 .btn-primary { background: var(--primary); color: #fff; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; width: 100%; transition: 0.2s; }
 .btn-secondary { background: var(--accent); color: #fff; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 10px; }
 .btn-whatsapp { background: #25D366; color: #fff; padding: 5px 10px; border-radius: 4px; text-decoration: none; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 5px; }
