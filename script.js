@@ -4,7 +4,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let clientes = [];
-let leads = []; // Nova lista para os agendamentos do site
+let leads = []; 
 let financeChartInstance = null;
 let periodoGrafico = 6;
 
@@ -14,18 +14,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('data-hoje').innerText = new Date().toLocaleDateString('pt-BR', options);
     try { 
         await carregarDadosDoBanco(); 
-        await carregarLeads(); // Carrega os pedidos do site
+        await carregarLeads(); 
     } catch (e) { 
         console.error("Erro:", e); 
     }
 });
 
-// --- LÓGICA DE LEADS (NOVO) ---
+// --- LÓGICA DE LEADS (AGENDAMENTOS DO SITE) ---
 async function carregarLeads() {
     const { data, error } = await _supabase
         .from('agendamentos')
         .select('*')
-        .eq('status', 'Pendente') // Pega só os pendentes
+        .eq('status', 'Pendente') 
         .order('created_at', { ascending: false });
 
     if (error) { console.error("Erro leads:", error); return; }
@@ -34,7 +34,6 @@ async function carregarLeads() {
     const badge = document.getElementById('badge-leads');
     const table = document.getElementById('tabela-leads');
     
-    // Atualiza Bolinha de Notificação
     if (leads.length > 0) {
         badge.innerText = leads.length;
         badge.classList.remove('hidden');
@@ -42,13 +41,11 @@ async function carregarLeads() {
         badge.classList.add('hidden');
     }
 
-    // Preenche Tabela
     table.innerHTML = '';
     if(leads.length === 0) {
         table.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:20px;">Nenhuma solicitação pendente.</td></tr>`;
     } else {
         leads.forEach(l => {
-            // Data formatada simples
             const dataPed = new Date(l.created_at).toLocaleDateString('pt-BR');
             table.innerHTML += `
                 <tr>
@@ -66,11 +63,10 @@ async function atenderAgendamento(id) {
     const lead = leads.find(l => l.id === id);
     if(!lead) return;
 
-    // Preenche o formulário de venda com os dados do lead
     document.getElementById('venda-nome').value = lead.nome;
     document.getElementById('venda-tel').value = lead.telefone;
     document.getElementById('venda-data').value = lead.data_preferencia;
-    // Tenta selecionar o serviço (se bater o nome)
+    
     const select = document.getElementById('venda-tipo');
     for (let i = 0; i < select.options.length; i++) {
         if (select.options[i].text.includes(lead.tipo_servico)) {
@@ -80,10 +76,8 @@ async function atenderAgendamento(id) {
     }
     document.getElementById('venda-obs').value = "Agendamento Online #" + id;
 
-    // Marca como 'Atendido' no banco para sair da lista
     await _supabase.from('agendamentos').update({ status: 'Atendido' }).eq('id', id);
     
-    // Recarrega lista e vai pra tela de venda
     await carregarLeads();
     navegar('vendas');
     showToast("Dados do cliente carregados! Complete o cadastro.");
@@ -118,9 +112,16 @@ async function salvarCliente(clienteObj) {
     return true;
 }
 
+// Helper para limpar telefone (deixar só numeros) para comparação
+function limparNumeros(str) {
+    return str ? str.replace(/\D/g, '') : '';
+}
+
 window.autoPreencherDados = function() {
-    const nome = document.getElementById('venda-nome').value;
-    const cli = clientes.find(c => c.nome.toLowerCase() === nome.toLowerCase());
+    const nomeInput = document.getElementById('venda-nome').value;
+    // Tenta achar pelo nome apenas para facilitar o preenchimento inicial
+    const cli = clientes.find(c => c.nome.toLowerCase() === nomeInput.toLowerCase());
+    
     if (cli) {
         document.getElementById('venda-tel').value = cli.telefone || '';
         const end = cli.endereco || '';
@@ -132,10 +133,11 @@ window.autoPreencherDados = function() {
             document.getElementById('venda-endereco').value = end;
             document.getElementById('venda-cidade').value = "";
         }
-        showToast("Dados carregados!", "blue");
+        showToast("Dados encontrados! Verifique o telefone.", "blue");
     }
 }
 
+// --- LÓGICA DE SALVAMENTO ALTERADA (USANDO TELEFONE COMO ID) ---
 document.getElementById('form-venda').addEventListener('submit', async (e) => {
     e.preventDefault();
     const nome = document.getElementById('venda-nome').value;
@@ -147,34 +149,84 @@ document.getElementById('form-venda').addEventListener('submit', async (e) => {
     const valor = document.getElementById('venda-valor').value;
     const obs = document.getElementById('venda-obs').value;
     const btn = document.querySelector('.btn-primary');
+    
     const txtOriginal = btn.innerHTML;
     btn.innerHTML = 'Salvando...'; btn.disabled = true;
 
     try {
-        let cliente = clientes.find(c => c.nome.toLowerCase() === nome.toLowerCase());
+        // CORREÇÃO AQUI: Procura o cliente pelo TELEFONE (apenas números), não pelo nome
+        const telLimpoInput = limparNumeros(tel);
+        let cliente = clientes.find(c => limparNumeros(c.telefone) === telLimpoInput);
+
         const servico = { data, servico: tipo, valor, obs };
+        
         if (cliente) {
+            // Cliente já existe (mesmo telefone): Atualiza
             if (!cliente.historico) cliente.historico = [];
             cliente.historico.unshift(servico);
-            cliente.telefone = tel; cliente.endereco = rua; cliente.cidade = cid;
-            await salvarCliente(cliente); showToast("Histórico atualizado!");
+            
+            // Atualiza dados cadastrais caso tenham mudado
+            cliente.nome = nome; 
+            cliente.telefone = tel; 
+            cliente.endereco = rua; 
+            cliente.cidade = cid;
+            
+            await salvarCliente(cliente); 
+            showToast("Cliente identificado pelo Whats! Histórico atualizado.");
         } else {
+            // Telefone novo: Cria novo cliente (mesmo se o nome for igual a outro)
             const novo = { nome, telefone: tel, endereco: rua, cidade: cid, historico: [servico] };
-            await salvarCliente(novo); showToast("Novo cliente salvo!");
+            await salvarCliente(novo); 
+            showToast("Novo cliente cadastrado com sucesso!");
         }
+        
         document.getElementById('form-venda').reset();
         navegar('dashboard');
     } catch (err) { console.error(err); alert("Erro: " + err.message); } 
     finally { btn.innerHTML = txtOriginal; btn.disabled = false; }
 });
 
+// --- FUNÇÃO DE RENOVAR MANUTENÇÃO (BOTÃO VERDE) ---
+window.renovarManutencao = async (id) => {
+    const cliente = clientes.find(c => c.id === id);
+    if(!cliente) return;
+
+    if(!confirm(`Confirmar manutenção de ${cliente.nome} realizada HOJE? \nIsso renovará o ciclo para 1 ano.`)) return;
+
+    // Cria registro de hoje
+    const hoje = new Date().toISOString().split('T')[0];
+    const novoServico = {
+        data: hoje,
+        servico: 'Manutenção Preventiva',
+        valor: 0, 
+        obs: 'Renovação rápida via Dashboard'
+    };
+
+    if (!cliente.historico) cliente.historico = [];
+    
+    // Adiciona no topo do histórico
+    cliente.historico.unshift(novoServico);
+
+    // Salva no banco
+    const sucesso = await salvarCliente(cliente);
+    if(sucesso) {
+        showToast("Manutenção Renovada! Ciclo reiniciado.", "green");
+    }
+};
+
+// --- RENDERIZAÇÃO DA DASHBOARD E TABELAS ---
 function renderizarTudo() {
     const tbDash = document.getElementById('tabela-dashboard');
     const tbBase = document.getElementById('tabela-clientes-base');
     const dl = document.getElementById('lista-clientes-sugestao');
-    tbDash.innerHTML = ''; tbBase.innerHTML = ''; dl.innerHTML = '';
+    
+    tbDash.innerHTML = ''; 
+    tbBase.innerHTML = ''; 
+    dl.innerHTML = '';
+
     let kpi = { vencidos: 0, alerta: 0, receita: 0, negociacao: 0 };
-    const mesAtual = new Date().getMonth(); const anoAtual = new Date().getFullYear();
+    const mesAtual = new Date().getMonth(); 
+    const anoAtual = new Date().getFullYear();
 
     clientes.forEach(c => {
         const hist = Array.isArray(c.historico) ? c.historico : [];
@@ -197,11 +249,26 @@ function renderizarTudo() {
             }
         });
 
+        // Tabela Dashboard
         if (st.st !== 'ok') {
-            const zap = `https://wa.me/55${c.telefone}`;
+            // Lógica da Mensagem Automática do WhatsApp
+            let msgTexto = "";
+            if (st.st === 'negociacao') {
+                msgTexto = `Olá ${c.nome}, tudo bem? Aqui é da HD Aquecedores. Gostaria de saber se conseguiu avaliar nosso orçamento?`;
+            } else {
+                msgTexto = `Olá ${c.nome}, tudo bem? Aqui é da HD Aquecedores. \n\nVerifiquei em nosso sistema que está na hora de realizarmos a manutenção preventiva anual do seu aquecedor. \n\nPodemos agendar uma visita?`;
+            }
+            
+            const msgEncoded = encodeURIComponent(msgTexto);
+            const zap = `https://wa.me/55${limparNumeros(c.telefone)}?text=${msgEncoded}`;
+            
             const icon = st.st === 'negociacao' ? '<i class="fas fa-comments-dollar"></i>' : '<i class="fab fa-whatsapp"></i>';
-            tbDash.innerHTML += `<tr><td><strong>${c.nome}</strong></td><td><span class="status status-${st.st}">${st.txt}</span></td><td>${ultData ? formatarData(ultData) : '-'}</td><td><a href="${zap}" target="_blank" class="btn-whatsapp">${icon}</a></td></tr>`;
+            const btnRenovar = `<button onclick="renovarManutencao(${c.id})" title="Confirmar Manutenção Hoje" style="background:transparent; border:1px solid #10b981; color:#10b981; border-radius:5px; padding:5px 8px; cursor:pointer; margin-left:5px;"><i class="fas fa-check"></i></button>`;
+
+            tbDash.innerHTML += `<tr><td><strong>${c.nome}</strong></td><td><span class="status status-${st.st}">${st.txt}</span></td><td>${ultData ? formatarData(ultData) : '-'}</td><td><a href="${zap}" target="_blank" class="btn-whatsapp">${icon}</a></td><td>${btnRenovar}</td></tr>`;
         }
+        
+        // Tabela Clientes
         tbBase.innerHTML += `<tr><td>${c.nome}</td><td style="font-size:0.8rem">${c.endereco||'-'}</td><td><button class="btn-hist" onclick="abrirHistorico(${c.id})">Ver</button></td></tr>`;
         dl.innerHTML += `<option value="${c.nome}">`;
     });
@@ -212,6 +279,7 @@ function renderizarTudo() {
     document.getElementById('kpi-faturamento').innerText = `R$ ${kpi.receita.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
 }
 
+// --- GRÁFICOS ---
 window.atualizarGrafico = function(meses) {
     periodoGrafico = parseInt(meses);
     document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -246,7 +314,6 @@ function renderizarGrafico() {
         somaTotal += total;
     }
     
-    // Atualiza o card de faturamento também
     const elFat = document.getElementById('kpi-faturamento');
     if(elFat) elFat.innerText = `R$ ${somaTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
 
@@ -260,6 +327,7 @@ function renderizarGrafico() {
     });
 }
 
+// --- CONFIGURAÇÕES DE UI E TEMA ---
 function setupMenuAndTheme() {
     document.querySelectorAll('.menu-nav a').forEach(link => {
         link.addEventListener('click', (e) => { e.preventDefault(); navegar(link.id.replace('link-', '')); });
@@ -280,11 +348,12 @@ function navegar(id) {
     document.getElementById('page-title').innerText = titulos[id] || 'HD System';
     if (window.innerWidth <= 768) toggleSidebar();
     if (id === 'dashboard') renderizarGrafico();
-    if (id === 'leads') carregarLeads(); // Recarrega leads ao abrir a aba
+    if (id === 'leads') carregarLeads(); 
 }
 function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); document.querySelector('.sidebar-overlay').classList.toggle('active'); }
 window.toggleSidebar = toggleSidebar;
 
+// --- UTILITÁRIOS ---
 function calcularStatus(d, tipo) {
     if (!d) return { st: 'novo', txt: 'Novo' };
     if (tipo === 'Orçamento') return { st: 'negociacao', txt: 'Em Aberto' };
@@ -325,6 +394,6 @@ window.filtrarClientes = () => {
     document.querySelectorAll('#tabela-clientes-base tr').forEach(tr => { tr.style.display = tr.innerText.toLowerCase().includes(termo) ? '' : 'none'; });
 };
 
-// Funções globais extras
+// Funções globais extras para acesso no HTML
 window.carregarLeads = carregarLeads;
 window.atenderAgendamento = atenderAgendamento;
