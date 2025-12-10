@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#10b981">
     <title>HD System PRO</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -12,6 +13,40 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <link rel="stylesheet" href="style.css">
+
+    <style>
+        /* Estilos Extras (Paginação e Login) */
+        .pagination-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: var(--bg-card);
+            border-top: 1px solid var(--border);
+            border-radius: 0 0 8px 8px;
+            margin-top: -5px; /* Cola na tabela */
+        }
+        .btn-page {
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: opacity 0.2s;
+        }
+        .btn-page:disabled { opacity: 0.5; cursor: not-allowed; background: var(--gray); }
+        .btn-page:hover:not(:disabled) { filter: brightness(1.1); }
+        .info-pag { font-weight: 600; color: var(--text); font-size: 0.85rem; }
+
+        /* Modal Login */
+        .login-container { max-width: 350px !important; text-align: center; }
+        .login-logo { margin-bottom: 20px; color: var(--primary); font-size: 3rem; }
+    </style>
 </head>
 <body>
 
@@ -27,12 +62,10 @@
             <a href="#" id="link-dashboard" class="menu-item active" onclick="navegar('dashboard')">
                 <i class="fas fa-chart-pie"></i> Dashboard
             </a>
-            
             <a href="#" id="link-leads" class="menu-item" onclick="navegar('leads')">
                 <i class="fas fa-bell"></i> Solicitações Site
                 <span id="badge-leads" class="badge hidden">0</span>
             </a>
-
             <a href="#" id="link-vendas" class="menu-item" onclick="navegar('vendas')">
                 <i class="fas fa-plus-circle"></i> Novo Serviço
             </a>
@@ -56,12 +89,12 @@
             <p><strong>HD Aquecedores</strong></p>
             <div class="actions">
                 <button onclick="exportarCSV()" class="btn-link"><i class="fas fa-download"></i> Backup Excel</button>
+                <button onclick="fazerLogout()" class="btn-link danger"><i class="fas fa-sign-out-alt"></i> Sair</button>
             </div>
         </div>
     </aside>
 
     <main class="content">
-        
         <div class="mobile-header">
             <button class="btn-hamburger" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
             <h2>HD System</h2>
@@ -77,6 +110,10 @@
 
         <div id="view-dashboard" class="view-section">
             <section class="kpi-container">
+                <div class="card kpi kpi-clientes">
+                    <div class="icon"><i class="fas fa-users"></i></div>
+                    <div class="info"><h3>Total Clientes</h3><p id="kpi-total-clientes">...</p></div>
+                </div>
                 <div class="card kpi kpi-negoc">
                     <div class="icon"><i class="fas fa-comments-dollar"></i></div>
                     <div class="info"><h3>Em Negociação</h3><p id="kpi-negoc">0</p></div>
@@ -117,13 +154,22 @@
                         <tbody id="tabela-dashboard"></tbody>
                     </table>
                 </div>
+                <div class="pagination-footer">
+                    <button class="btn-page" id="btn-ant-dash" onclick="mudarPaginaDash(-1)" disabled>
+                        <i class="fas fa-chevron-left"></i> Anterior
+                    </button>
+                    <span id="info-pag-dash" class="info-pag">Carregando...</span>
+                    <button class="btn-page" id="btn-prox-dash" onclick="mudarPaginaDash(1)">
+                        Próxima <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
             </section>
         </div>
 
         <div id="view-leads" class="view-section hidden">
             <section class="table-container">
                 <div class="table-header">
-                    <h2>Solicitações do Site (Agendamentos)</h2>
+                    <h2>Solicitações do Site</h2>
                     <button class="btn-hist" onclick="carregarLeads()" style="background:var(--gray);"><i class="fas fa-sync"></i> Atualizar</button>
                 </div>
                 <div class="table-responsive">
@@ -136,8 +182,7 @@
                                 <th>Ação</th>
                             </tr>
                         </thead>
-                        <tbody id="tabela-leads">
-                            </tbody>
+                        <tbody id="tabela-leads"></tbody>
                     </table>
                 </div>
             </section>
@@ -150,7 +195,7 @@
                     <div class="form-grid">
                         <div class="input-group">
                             <label>Cliente</label>
-                            <input type="text" id="venda-nome" placeholder="Busque ou digite..." required list="lista-clientes-sugestao" onchange="autoPreencherDados()">
+                            <input type="text" id="venda-nome" placeholder="Busque ou digite..." required list="lista-clientes-sugestao" onchange="autoPreencherDados()" autocomplete="off">
                             <datalist id="lista-clientes-sugestao"></datalist>
                         </div>
                         <div class="input-group"><label>WhatsApp</label><input type="tel" id="venda-tel" placeholder="119..." required></div>
@@ -188,6 +233,15 @@
                         <thead><tr><th>Nome</th><th>Endereço</th><th>Ação</th></tr></thead>
                         <tbody id="tabela-clientes-base"></tbody>
                     </table>
+                </div>
+                <div class="pagination-footer">
+                    <button class="btn-page" id="btn-ant" onclick="mudarPagina(-1)" disabled>
+                        <i class="fas fa-chevron-left"></i> Anterior
+                    </button>
+                    <span id="info-paginacao" class="info-pag">Carregando...</span>
+                    <button class="btn-page" id="btn-prox" onclick="mudarPagina(1)">
+                        Próxima <i class="fas fa-chevron-right"></i>
+                    </button>
                 </div>
             </section>
         </div>
@@ -232,6 +286,23 @@
             </div>
             <div class="receipt-footer"><div class="signature">Assinatura</div></div>
             <div class="no-print" style="margin-top:20px; text-align:center;"><button onclick="window.print()" class="btn-primary">Imprimir</button><button onclick="fecharModal('modal-recibo')" class="btn-link danger">Fechar</button></div>
+        </div>
+    </div>
+
+    <div id="modal-login" class="modal-overlay hidden">
+        <div class="modal-content login-container">
+            <div class="login-logo"><i class="fas fa-fire"></i></div>
+            <h2>Acesso Restrito</h2>
+            <p style="margin-bottom:20px; color:var(--text-light)">Entre com suas credenciais.</p>
+            <form id="form-login">
+                <div class="input-group full-width">
+                    <input type="email" id="login-email" placeholder="E-mail" required style="width:100%">
+                </div>
+                <div class="input-group full-width">
+                    <input type="password" id="login-senha" placeholder="Senha" required style="width:100%">
+                </div>
+                <button type="submit" class="btn-primary" style="width:100%">Entrar no Sistema</button>
+            </form>
         </div>
     </div>
 
