@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#10b981">
-    <title>HD System PRO</title>
+    <title>HD System PRO - Modo Flex</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -15,22 +15,58 @@
     <link rel="stylesheet" href="style.css">
 
     <style>
-        /* Paginação */
+        /* --- ESTILOS ORIGINAIS --- */
         .pagination-footer { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: var(--bg-card); border-top: 1px solid var(--border); border-radius: 0 0 8px 8px; margin-top: -1px; }
         .btn-page { background: var(--primary); color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; transition: opacity 0.2s; }
         .btn-page:disabled { opacity: 0.5; cursor: not-allowed; background: var(--gray); }
         .btn-page:hover:not(:disabled) { filter: brightness(1.1); }
         #info-paginacao, #info-pag-dash { font-weight: 600; color: var(--text); font-size: 0.9rem; }
 
-        /* Login */
         .login-container { max-width: 350px !important; text-align: center; }
         .login-logo { margin-bottom: 20px; color: var(--primary); font-size: 3rem; }
 
-        /* NOVO: Estilo do Menu WhatsApp */
         .zap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
         .btn-zap-opt { background: var(--bg); border: 1px solid var(--border); padding: 15px; border-radius: 8px; cursor: pointer; transition: 0.2s; color: var(--text); display: flex; flex-direction: column; align-items: center; gap: 10px; font-size: 0.9rem; }
         .btn-zap-opt:hover { background: #e0f2f1; border-color: #10b981; color: #10b981; transform: translateY(-2px); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .btn-zap-opt i { font-size: 1.5rem; margin-bottom: 5px; }
+
+        /* --- NOVOS ESTILOS (ESTRATÉGIA FLEX) --- */
+        
+        /* Animação para o botão de oferta pulsar */
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        #btn-flex-disparo {
+            background-color: #ef4444; /* Vermelho alerta ou use var(--accent) */
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: pulse-red 2s infinite;
+            margin-right: 15px;
+            transition: all 0.3s ease;
+        }
+
+        #btn-flex-disparo:hover { transform: scale(1.05); }
+        
+        /* Classe utilitária para esconder elementos */
+        .hidden-force { display: none !important; }
+
+        /* Estilo do Checkbox na tabela */
+        .check-cliente {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--primary);
+        }
     </style>
 </head>
 <body>
@@ -198,12 +234,31 @@
             <section class="table-container">
                 <div class="table-header with-search">
                     <h2>Base de Clientes</h2>
-                    <div class="search-box"><i class="fas fa-search"></i><input type="text" id="busca-cliente" placeholder="Buscar..." onkeyup="filtrarClientes()"></div>
+                    
+                    <button id="btn-flex-disparo" class="hidden-force" onclick="prepararEnvioMassa()">
+                        <i class="fab fa-whatsapp"></i> Disparar Oferta (0)
+                    </button>
+
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="busca-cliente" placeholder="Digite 'Flex' ou busque..." onkeyup="verificarFlex(this.value)">
+                    </div>
                 </div>
                 <div class="table-responsive">
                     <table>
-                        <thead><tr><th>Nome</th><th>Endereço</th><th>Data Atend.</th><th>Ação</th></tr></thead>
-                        <tbody id="tabela-clientes-base"></tbody>
+                        <thead>
+                            <tr>
+                                <th style="width: 40px; text-align: center;">
+                                    <input type="checkbox" id="check-all" onclick="selecionarTodos(this)" class="check-cliente">
+                                </th>
+                                <th>Nome</th>
+                                <th>Endereço</th>
+                                <th>Data Atend.</th>
+                                <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-clientes-base">
+                            </tbody>
                     </table>
                 </div>
                 <div class="pagination-footer">
@@ -291,5 +346,96 @@
     <div id="toast" class="toast">Aviso</div>
 
     <script src="script.js"></script>
+
+    <script>
+        // --- 1. Detectar digitação "Flex" ---
+        function verificarFlex(texto) {
+            const input = document.getElementById('busca-cliente');
+            if (texto.toLowerCase() === 'flex') {
+                mostrarToast("🚀 Modo Flex Ativado! Agrupe os vizinhos.");
+                input.style.borderColor = "#ef4444"; // Muda borda para vermelho
+            } else {
+                input.style.borderColor = "var(--border)";
+            }
+            // Chama a busca original do seu sistema
+            if (typeof filtrarClientes === 'function') filtrarClientes(); 
+        }
+
+        // --- 2. Atualizar Botão de Disparo ---
+        function atualizarContadorFlex() {
+            const checkboxes = document.querySelectorAll('.check-cliente:checked');
+            const btn = document.getElementById('btn-flex-disparo');
+            const qtd = checkboxes.length;
+            
+            if (qtd > 0 && document.getElementById('check-all').checked === false) {
+                // Se não for o header checkado sozinho
+                btn.classList.remove('hidden-force');
+                btn.innerHTML = `<i class="fab fa-whatsapp"></i> Disparar Oferta (${qtd})`;
+
+                if(qtd > 5) {
+                    btn.style.backgroundColor = '#333'; 
+                    btn.innerHTML = `<i class="fas fa-hand-paper"></i> Máximo 5! (${qtd})`;
+                    btn.disabled = true;
+                } else {
+                    btn.style.backgroundColor = '#ef4444';
+                    btn.disabled = false;
+                }
+            } else {
+                if (qtd === 0) btn.classList.add('hidden-force');
+            }
+        }
+
+        function selecionarTodos(source) {
+            const checkboxes = document.querySelectorAll('#tabela-clientes-base .check-cliente');
+            checkboxes.forEach(cb => {
+                cb.checked = source.checked;
+            });
+            atualizarContadorFlex();
+        }
+
+        // --- 3. Enviar Mensagem em Massa (Opção A) ---
+        function prepararEnvioMassa() {
+            const selecionados = document.querySelectorAll('#tabela-clientes-base .check-cliente:checked');
+
+            if (selecionados.length === 0) return;
+            if (selecionados.length > 5) {
+                alert("⚠️ Por segurança anti-spam, selecione no máximo 5 clientes.");
+                return;
+            }
+
+            // TEXTO DA ESTRATÉGIA A (Isenção de Taxa)
+            const textoBase = "Olá, *[NOME]*! Tudo bem? O técnico da *HD Aquecedores* estará no seu condomínio amanhã atendendo um vizinho. Como já estaremos aí, consigo isentar 100% da taxa de visita para fazer a manutenção do seu aquecedor. Quer que eu reserve um horário para você?";
+
+            let delay = 0;
+
+            selecionados.forEach((check) => {
+                const nome = check.dataset.nome.split(' ')[0]; // Só o primeiro nome
+                const telefone = check.dataset.tel;
+                
+                if(!telefone || telefone.length < 10) return;
+
+                const msgFinal = textoBase.replace('[NOME]', nome);
+                const link = `https://wa.me/55${limparTelefone(telefone)}?text=${encodeURIComponent(msgFinal)}`;
+
+                // Abre janelas com intervalo de 1 segundo entre elas
+                setTimeout(() => {
+                    window.open(link, '_blank');
+                }, delay);
+                
+                delay += 1000;
+            });
+
+            // Resetar após envio
+            setTimeout(() => {
+                document.getElementById('check-all').checked = false;
+                selecionados.forEach(c => c.checked = false);
+                atualizarContadorFlex();
+            }, delay + 500);
+        }
+
+        function limparTelefone(tel) {
+            return tel.replace(/\D/g, '');
+        }
+    </script>
 </body>
 </html>
