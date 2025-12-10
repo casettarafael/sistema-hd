@@ -21,6 +21,18 @@ const itensPorPaginaDash = 20;
 
 let zapAtual = { nome: '', tel: '' };
 
+// --- FUNÇÃO AUXILIAR NOVA: Formata Data (YYYY-MM-DD -> DD/MM/YYYY) ---
+function formatarDataBonita(dataAmericana) {
+    if (!dataAmericana) return '-';
+    // Se vier data completa com hora (ISO), pega só a parte da data
+    const apenasData = dataAmericana.split('T')[0];
+    const partes = apenasData.split('-');
+    if (partes.length === 3) {
+        return `${partes[2]}/${partes[1]}/${partes[0]}`;
+    }
+    return dataAmericana;
+}
+
 // --- INICIALIZAÇÃO ---
 document.addEventListener('DOMContentLoaded', async () => {
     const { data: { session } } = await _supabase.auth.getSession();
@@ -82,12 +94,13 @@ window.fazerLogout = async () => {
 
 // --- DADOS DO DASHBOARD ---
 async function carregarDadosDoBanco() {
+    // Carrega tudo, inclusive a coluna data_atendimento que importamos
     const { data, error } = await _supabase.from('clientes').select('*').order('id', { ascending: false });
     if (error) { console.error(error); return; }
     clientes = data || [];
     
     calcularKPIsEstaticos(); 
-    renderizarGrafico(); // O faturamento é calculado aqui dentro agora!    
+    renderizarGrafico();    
     atualizarTotalClientes(); 
 }
 
@@ -103,8 +116,13 @@ function calcularKPIsEstaticos() {
         hist.sort((a, b) => new Date(b.data||0) - new Date(a.data||0));
         
         const ult = hist.length > 0 ? hist[0] : null;
-        const ultData = ult ? ult.data : null;
-        const ultTipo = ult ? ult.servico : null;
+        
+        // --- INTEGRAÇÃO COM IMPORTAÇÃO ---
+        // Se tiver histórico, usa a data do histórico.
+        // Se NÃO tiver histórico (cliente importado), usa a data_atendimento da tabela.
+        const ultData = ult ? ult.data : c.data_atendimento;
+        const ultTipo = ult ? ult.servico : 'Manutenção Preventiva'; // Assume preventiva se for importado
+
         const st = calcularStatus(ultData, ultTipo);
 
         if (st.st === 'vencido') kpi.vencidos++;
@@ -204,7 +222,7 @@ window.enviarZap = (tipo) => {
     document.getElementById('modal-whatsapp').classList.add('hidden');
 }
 
-// --- TABELA DASHBOARD (MODIFICADA AQUI) ---
+// --- TABELA DASHBOARD ---
 function renderizarTabelaDashboardPaginada() {
     const tbDash = document.getElementById('tabela-dashboard');
     const btnAnt = document.getElementById('btn-ant-dash');
@@ -219,29 +237,15 @@ function renderizarTabelaDashboardPaginada() {
         return;
     }
 
-    // --- ORDENAÇÃO MODIFICADA ---
     listaManutencoesDash.sort((a, b) => {
-        // PRIORIDADE: Alerta/Negociação (10) > Vencido (5) > Outros
-        const peso = { 
-            'negociacao': 10, 
-            'alerta': 10,     // AGORA ESTÁ NO TOPO
-            'vencido': 5      // AGORA VEM DEPOIS
-        };
-        
+        const peso = { 'negociacao': 10, 'alerta': 10, 'vencido': 5 };
         const pA = peso[a.statusObj.st] || 0;
         const pB = peso[b.statusObj.st] || 0;
-
-        // Se os pesos forem diferentes, o maior ganha
-        if (pB !== pA) {
-            return pB - pA;
-        }
-
-        // DESEMPATE POR DATA (Se ambos forem 'alerta', mostra quem vence primeiro)
+        if (pB !== pA) return pB - pA;
         const dataA = new Date(a.dataRef || 0);
         const dataB = new Date(b.dataRef || 0);
         return dataA - dataB;
     });
-    // ----------------------------
 
     const inicio = paginaAtualDash * itensPorPaginaDash;
     const fim = inicio + itensPorPaginaDash;
@@ -256,7 +260,7 @@ function renderizarTabelaDashboardPaginada() {
             <tr>
                 <td><strong>${item.nome}</strong></td>
                 <td><span class="status status-${item.statusObj.st}">${item.statusObj.txt}</span></td>
-                <td>${item.dataRef ? formatarData(item.dataRef) : '-'}</td>
+                <td>${item.dataRef ? formatarDataBonita(item.dataRef) : '-'}</td>
                 <td>${btnZap}</td>
                 <td>${btnRenovar}</td>
             </tr>
@@ -283,11 +287,11 @@ window.exportarCSV = async () => {
     if(!data || data.length === 0) { alert("Nada para exportar."); return; }
 
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "ID,Nome,Telefone,Endereco,Historico_JSON\n";
+    csvContent += "ID,Nome,Telefone,Endereco,DataAtendimento,Historico_JSON\n";
 
     data.forEach(row => {
         const histString = row.historico ? JSON.stringify(row.historico).replace(/"/g, '""') : ""; 
-        const linha = `${row.id},"${row.nome}","${row.telefone}","${row.endereco}","${histString}"`;
+        const linha = `${row.id},"${row.nome}","${row.telefone}","${row.endereco}","${row.data_atendimento || ''}","${histString}"`;
         csvContent += linha + "\n";
     });
 
@@ -300,25 +304,34 @@ window.exportarCSV = async () => {
     document.body.removeChild(link);
 }
 
-// --- PAGINAÇÃO CLIENTES ---
+// --- PAGINAÇÃO CLIENTES (ATUALIZADA COM DATA) ---
 async function carregarTabelaClientes(termoBusca = "") {
     const tbBase = document.getElementById('tabela-clientes-base');
     const info = document.getElementById('info-paginacao');
-    if(tbBase) tbBase.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 20px;"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
+    if(tbBase) tbBase.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 20px;"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
     
     let query = _supabase.from('clientes').select('*', { count: 'exact' }).order('id', { ascending: false });
     if (termoBusca) query = query.ilike('nome', `%${termoBusca}%`);
     else query = query.range(paginaAtualClientes * itensPorPagina, (paginaAtualClientes * itensPorPagina) + itensPorPagina - 1);
 
     const { data, count, error } = await query;
-    if (error) { if(tbBase) tbBase.innerHTML = '<tr><td colspan="3">Erro acesso.</td></tr>'; return; }
+    if (error) { if(tbBase) tbBase.innerHTML = '<tr><td colspan="4">Erro acesso.</td></tr>'; return; }
 
     if(tbBase) {
         tbBase.innerHTML = '';
-        if (!data || data.length === 0) tbBase.innerHTML = '<tr><td colspan="3" style="text-align:center;">Nada encontrado.</td></tr>';
+        if (!data || data.length === 0) tbBase.innerHTML = '<tr><td colspan="4" style="text-align:center;">Nada encontrado.</td></tr>';
         else {
             data.forEach(c => {
-                tbBase.innerHTML += `<tr><td><strong>${c.nome}</strong></td><td>${c.endereco || '-'}</td><td><button class="btn-hist" onclick="abrirHistorico(${c.id})">Ver</button></td></tr>`;
+                // AQUI ADICIONAMOS A COLUNA DA DATA FORMATADA
+                const dataShow = formatarDataBonita(c.data_atendimento);
+                
+                tbBase.innerHTML += `
+                    <tr>
+                        <td><strong>${c.nome}</strong></td>
+                        <td>${c.endereco || '-'}</td>
+                        <td>${dataShow}</td>
+                        <td><button class="btn-hist" onclick="abrirHistorico(${c.id})">Ver</button></td>
+                    </tr>`;
             });
         }
     }
@@ -368,16 +381,34 @@ async function atenderAgendamento(id) {
     await _supabase.from('agendamentos').update({ status: 'Atendido' }).eq('id', id);
     await carregarLeads(); navegar('vendas');
 }
+
+// ATUALIZAÇÃO: Ao salvar cliente, atualizamos também o campo data_atendimento na raiz
 async function salvarCliente(clienteObj) {
     let enderecoFinal = clienteObj.endereco || "";
     if (clienteObj.cidade && !enderecoFinal.includes(clienteObj.cidade)) enderecoFinal = `${enderecoFinal} - ${clienteObj.cidade}`;
-    const dados = { nome: clienteObj.nome, telefone: clienteObj.telefone, endereco: enderecoFinal, historico: clienteObj.historico };
+    
+    // Pega a última data do histórico para atualizar a coluna principal
+    let ultimaData = null;
+    if(clienteObj.historico && clienteObj.historico.length > 0) {
+        ultimaData = clienteObj.historico[0].data;
+    }
+
+    const dados = { 
+        nome: clienteObj.nome, 
+        telefone: clienteObj.telefone, 
+        endereco: enderecoFinal, 
+        historico: clienteObj.historico,
+        data_atendimento: ultimaData // Mantém a coluna de busca atualizada
+    };
+
     let res;
     if (clienteObj.id) res = await _supabase.from('clientes').update(dados).eq('id', clienteObj.id);
     else res = await _supabase.from('clientes').insert([dados]);
+    
     if (res.error) { alert("Erro ao salvar: " + res.error.message); return false; }
     await carregarDadosDoBanco(); await carregarTabelaClientes(); return true;
 }
+
 const formVenda = document.getElementById('form-venda');
 if(formVenda) {
     formVenda.addEventListener('submit', async (e) => {
@@ -394,8 +425,10 @@ if(formVenda) {
             const tipo = document.getElementById('venda-tipo').value;
             const valor = document.getElementById('venda-valor').value;
             const obs = document.getElementById('venda-obs').value;
+            
             let cliente = clientes.find(c => limparNumeros(c.telefone) === limparNumeros(tel));
             const servico = { data, servico: tipo, valor, obs };
+            
             if (cliente) {
                 if (!cliente.historico) cliente.historico = [];
                 cliente.historico.unshift(servico);
@@ -409,21 +442,27 @@ if(formVenda) {
         } catch (err) { console.error(err); } finally { btn.innerText = txtOriginal; btn.disabled = false; }
     });
 }
+
 window.renovarManutencao = async (id) => {
     let cliente = clientes.find(c => c.id === id);
     if (!cliente) { const { data } = await _supabase.from('clientes').select('*').eq('id', id).single(); cliente = data; }
     if(!cliente || !confirm(`Renovar manutenção de ${cliente.nome}?`)) return;
+    
     const hoje = new Date().toISOString().split('T')[0];
     if (!cliente.historico) cliente.historico = [];
+    
     cliente.historico.unshift({ data: hoje, servico: 'Manutenção Preventiva', valor: 0, obs: 'Renovação rápida' });
+    
     if(await salvarCliente(cliente)) showToast("Renovado!", "green");
 };
+
 function setupMenuAndTheme() {
     document.querySelectorAll('.menu-nav a').forEach(link => link.addEventListener('click', (e) => { e.preventDefault(); navegar(link.id.replace('link-', '')); }));
     const theme = localStorage.getItem('theme');
     if (theme === 'dark') { document.documentElement.setAttribute('data-theme', 'dark'); document.getElementById('checkbox').checked = true; }
     document.getElementById('checkbox').addEventListener('change', (e) => { const t = e.target.checked ? 'dark' : 'light'; document.documentElement.setAttribute('data-theme', t); localStorage.setItem('theme', t); renderizarGrafico(); });
 }
+
 function navegar(id) {
     document.querySelectorAll('.menu-item').forEach(l => l.classList.remove('active'));
     document.getElementById('link-' + id).classList.add('active');
@@ -434,21 +473,34 @@ function navegar(id) {
     if (window.innerWidth <= 768) toggleSidebar();
     if (id === 'dashboard') renderizarGrafico();
 }
+
 function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); document.querySelector('.sidebar-overlay').classList.toggle('active'); }
 window.toggleSidebar = toggleSidebar;
+
 function calcularStatus(d, tipo) {
     if (!d) return { st: 'novo', txt: 'Novo' };
     if (tipo === 'Orçamento') return { st: 'negociacao', txt: 'Em Aberto' };
-    const p = new Date(d); p.setFullYear(p.getFullYear() + 1);
-    const diff = Math.ceil((p - new Date()) / 86400000);
-    if (diff <= 0) return { st: 'vencido', txt: `Vencido` };
-    if (diff <= 30) return { st: 'alerta', txt: `Vence ${diff}d` };
+    
+    // Data da manutenção + 1 Ano (365 dias)
+    const dataManut = new Date(d);
+    const dataVencimento = new Date(dataManut);
+    dataVencimento.setFullYear(dataVencimento.getFullYear() + 1);
+    
+    const hoje = new Date();
+    const diffEmMilissegundos = dataVencimento - hoje;
+    const diffEmDias = Math.ceil(diffEmMilissegundos / (1000 * 60 * 60 * 24));
+
+    if (diffEmDias <= 0) return { st: 'vencido', txt: `Vencido` };
+    if (diffEmDias <= 30) return { st: 'alerta', txt: `Vence ${diffEmDias}d` };
+    
     return { st: 'ok', txt: 'Em dia' };
 }
+
 function formatarData(d) { if(!d) return '-'; const dt = new Date(d); dt.setMinutes(dt.getMinutes() + dt.getTimezoneOffset()); return dt.toLocaleDateString('pt-BR'); }
 function formatarTel(t) { return t ? t.replace(/\D/g, '') : ''; }
 function limparNumeros(t) { return formatarTel(t); }
 function showToast(msg, color="green") { const t = document.getElementById('toast'); t.innerText = msg; t.style.backgroundColor = color==="red"?"#e74c3c":"#10b981"; t.className="toast show"; setTimeout(() => t.className="toast", 3000); }
+
 window.abrirHistorico = async (id) => {
     let c = clientes.find(x => x.id === id); 
     if(!c) { const { data } = await _supabase.from('clientes').select('*').eq('id', id).single(); c = data; }
@@ -461,9 +513,16 @@ window.abrirHistorico = async (id) => {
         if(h.servico !== 'Orçamento') total += parseFloat(h.valor || 0);
         tl.innerHTML += `<div class="timeline-item"><span class="t-date">${formatarData(h.data)}</span><span class="t-title">${h.servico}</span><p style="font-size:0.8rem;color:gray">${h.obs||''}</p><span class="t-val">R$ ${parseFloat(h.valor).toFixed(2)}</span></div>`;
     });
+    
+    // Se não tiver histórico (cliente importado), mostra a data de atendimento importada
+    if ((!c.historico || c.historico.length === 0) && c.data_atendimento) {
+        tl.innerHTML += `<div class="timeline-item"><span class="t-date">${formatarDataBonita(c.data_atendimento)}</span><span class="t-title">Importado</span><p style="font-size:0.8rem;color:gray">Cliente importado da planilha antiga</p><span class="t-val">-</span></div>`;
+    }
+
     document.getElementById('modal-total').innerText = `R$ ${total.toFixed(2)}`;
     document.getElementById('modal-historico').classList.remove('hidden');
 };
+
 window.fecharModal = (id) => document.getElementById(id).classList.add('hidden');
 window.gerarRecibo = () => {
     document.getElementById('print-nome').innerText = document.getElementById('rec-nome').value;
