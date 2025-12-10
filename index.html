@@ -15,37 +15,22 @@
     <link rel="stylesheet" href="style.css">
 
     <style>
-        /* Estilos Extras (Paginação e Login) */
-        .pagination-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px;
-            background: var(--bg-card);
-            border-top: 1px solid var(--border);
-            border-radius: 0 0 8px 8px;
-            margin-top: -5px; /* Cola na tabela */
-        }
-        .btn-page {
-            background: var(--primary);
-            color: #fff;
-            border: none;
-            padding: 8px 14px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.85rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: opacity 0.2s;
-        }
+        /* Paginação */
+        .pagination-footer { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: var(--bg-card); border-top: 1px solid var(--border); border-radius: 0 0 8px 8px; margin-top: -1px; }
+        .btn-page { background: var(--primary); color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; transition: opacity 0.2s; }
         .btn-page:disabled { opacity: 0.5; cursor: not-allowed; background: var(--gray); }
         .btn-page:hover:not(:disabled) { filter: brightness(1.1); }
-        .info-pag { font-weight: 600; color: var(--text); font-size: 0.85rem; }
+        #info-paginacao, #info-pag-dash { font-weight: 600; color: var(--text); font-size: 0.9rem; }
 
-        /* Modal Login */
+        /* Login */
         .login-container { max-width: 350px !important; text-align: center; }
         .login-logo { margin-bottom: 20px; color: var(--primary); font-size: 3rem; }
+
+        /* NOVO: Estilo do Menu WhatsApp */
+        .zap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .btn-zap-opt { background: var(--bg); border: 1px solid var(--border); padding: 15px; border-radius: 8px; cursor: pointer; transition: 0.2s; color: var(--text); display: flex; flex-direction: column; align-items: center; gap: 10px; font-size: 0.9rem; }
+        .btn-zap-opt:hover { background: #e0f2f1; border-color: #10b981; color: #10b981; transform: translateY(-2px); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .btn-zap-opt i { font-size: 1.5rem; margin-bottom: 5px; }
     </style>
 </head>
 <body>
@@ -155,13 +140,9 @@
                     </table>
                 </div>
                 <div class="pagination-footer">
-                    <button class="btn-page" id="btn-ant-dash" onclick="mudarPaginaDash(-1)" disabled>
-                        <i class="fas fa-chevron-left"></i> Anterior
-                    </button>
+                    <button class="btn-page" id="btn-ant-dash" onclick="mudarPaginaDash(-1)" disabled><i class="fas fa-chevron-left"></i> Anterior</button>
                     <span id="info-pag-dash" class="info-pag">Carregando...</span>
-                    <button class="btn-page" id="btn-prox-dash" onclick="mudarPaginaDash(1)">
-                        Próxima <i class="fas fa-chevron-right"></i>
-                    </button>
+                    <button class="btn-page" id="btn-prox-dash" onclick="mudarPaginaDash(1)">Próxima <i class="fas fa-chevron-right"></i></button>
                 </div>
             </section>
         </div>
@@ -174,14 +155,7 @@
                 </div>
                 <div class="table-responsive">
                     <table class="table-leads">
-                        <thead>
-                            <tr>
-                                <th>Data Pedido</th>
-                                <th>Cliente</th>
-                                <th>Serviço Solicitado</th>
-                                <th>Ação</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th>Data Pedido</th><th>Cliente</th><th>Serviço Solicitado</th><th>Ação</th></tr></thead>
                         <tbody id="tabela-leads"></tbody>
                     </table>
                 </div>
@@ -202,7 +176,6 @@
                         <div class="input-group full-width"><label>Endereço Completo</label><input type="text" id="venda-endereco" required></div>
                         <div class="input-group full-width"><label>Cidade</label><input type="text" id="venda-cidade" required></div>
                         <div class="input-group"><label>Data</label><input type="date" id="venda-data" required></div>
-                        
                         <div class="input-group">
                             <label>Tipo de Registro</label>
                             <select id="venda-tipo">
@@ -213,7 +186,6 @@
                                 <option value="Visita Técnica">Visita Técnica</option>
                             </select>
                         </div>
-                        
                         <div class="input-group"><label>Valor (R$)</label><input type="number" id="venda-valor" step="0.01" placeholder="0.00" required></div>
                         <div class="input-group full-width"><label>Detalhes / Observação</label><input type="text" id="venda-obs" placeholder="Ex: Aguardando aprovação..."></div>
                     </div>
@@ -235,13 +207,9 @@
                     </table>
                 </div>
                 <div class="pagination-footer">
-                    <button class="btn-page" id="btn-ant" onclick="mudarPagina(-1)" disabled>
-                        <i class="fas fa-chevron-left"></i> Anterior
-                    </button>
+                    <button class="btn-page" id="btn-ant" onclick="mudarPagina(-1)" disabled><i class="fas fa-chevron-left"></i> Anterior</button>
                     <span id="info-paginacao" class="info-pag">Carregando...</span>
-                    <button class="btn-page" id="btn-prox" onclick="mudarPagina(1)">
-                        Próxima <i class="fas fa-chevron-right"></i>
-                    </button>
+                    <button class="btn-page" id="btn-prox" onclick="mudarPagina(1)">Próxima <i class="fas fa-chevron-right"></i></button>
                 </div>
             </section>
         </div>
@@ -295,14 +263,28 @@
             <h2>Acesso Restrito</h2>
             <p style="margin-bottom:20px; color:var(--text-light)">Entre com suas credenciais.</p>
             <form id="form-login">
-                <div class="input-group full-width">
-                    <input type="email" id="login-email" placeholder="E-mail" required style="width:100%">
-                </div>
-                <div class="input-group full-width">
-                    <input type="password" id="login-senha" placeholder="Senha" required style="width:100%">
-                </div>
+                <div class="input-group full-width"><input type="email" id="login-email" placeholder="E-mail" required style="width:100%"></div>
+                <div class="input-group full-width"><input type="password" id="login-senha" placeholder="Senha" required style="width:100%"></div>
                 <button type="submit" class="btn-primary" style="width:100%">Entrar no Sistema</button>
             </form>
+        </div>
+    </div>
+
+    <div id="modal-whatsapp" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <div class="modal-header">
+                <h2>Escolha a Mensagem</h2>
+                <button onclick="fecharModal('modal-whatsapp')" class="btn-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <p id="zap-cliente-nome" style="margin-bottom: 20px; color: var(--text-light);">Cliente: ...</p>
+                <div class="zap-grid">
+                    <button onclick="enviarZap('cobranca')" class="btn-zap-opt"><i class="fas fa-file-invoice-dollar"></i> Cobrança / Pix</button>
+                    <button onclick="enviarZap('agendar')" class="btn-zap-opt"><i class="fas fa-calendar-check"></i> Agendar Manutenção</button>
+                    <button onclick="enviarZap('posvenda')" class="btn-zap-opt"><i class="fas fa-smile"></i> Pós-Venda</button>
+                    <button onclick="enviarZap('orcamento')" class="btn-zap-opt"><i class="fas fa-comments-dollar"></i> Orçamento</button>
+                </div>
+            </div>
         </div>
     </div>
 
