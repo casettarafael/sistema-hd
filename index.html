@@ -56,6 +56,22 @@
         }
 
         #btn-flex-disparo:hover { transform: scale(1.05); }
+
+        #btn-excluir-massa {
+            background-color: #374151; /* Cinza escuro para diferenciar do botão de oferta */
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-right: 10px;
+            transition: all 0.3s ease;
+        }
+        #btn-excluir-massa:hover { background-color: #1f2937; transform: scale(1.05); }
         
         /* Classe utilitária para esconder elementos */
         .hidden-force { display: none !important; }
@@ -67,6 +83,27 @@
             cursor: pointer;
             accent-color: var(--primary);
         }
+
+        /* Agrupamento dos botões do topo */
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Botão de excluir na linha da tabela */
+        .btn-delete-row {
+            background: #fee2e2;
+            color: #ef4444;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-left: 5px;
+            transition: 0.2s;
+        }
+        .btn-delete-row:hover { background: #ef4444; color: white; }
     </style>
 </head>
 <body>
@@ -234,14 +271,19 @@
             <section class="table-container">
                 <div class="table-header with-search">
                     <h2>Base de Clientes</h2>
-                    
-                    <button id="btn-flex-disparo" class="hidden-force" onclick="prepararEnvioMassa()">
-                        <i class="fab fa-whatsapp"></i> Disparar Oferta (0)
-                    </button>
+                    <div class="header-actions">
+                        <button id="btn-excluir-massa" class="hidden-force" onclick="abrirModalExclusao()">
+                            <i class="fas fa-trash-alt"></i> Excluir (<span id="lbl-qtd-excluir">0</span>)
+                        </button>
 
-                    <div class="search-box">
-                        <i class="fas fa-search"></i>
-                        <input type="text" id="busca-cliente" placeholder="Digite 'Flex' ou busque..." onkeyup="verificarFlex(this.value)">
+                        <button id="btn-flex-disparo" class="hidden-force" onclick="prepararEnvioMassa()">
+                            <i class="fab fa-whatsapp"></i> Disparar Oferta (0)
+                        </button>
+
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="busca-cliente" placeholder="Digite 'Flex' ou busque..." onkeyup="verificarFlex(this.value)">
+                        </div>
                     </div>
                 </div>
                 <div class="table-responsive">
@@ -343,6 +385,22 @@
         </div>
     </div>
 
+    <div id="modal-excluir" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <div class="modal-header">
+                <h2 style="color: #ef4444;">Excluir Clientes</h2>
+                <button onclick="fecharModal('modal-excluir')" class="btn-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 20px; color: var(--text);">Tem certeza que deseja excluir os clientes selecionados? Essa ação não pode ser desfeita.</p>
+                <div style="display: flex; justify-content: center; gap: 10px;">
+                    <button onclick="fecharModal('modal-excluir')" class="btn-link">Cancelar</button>
+                    <button onclick="confirmarExclusao()" class="btn-primary" style="background-color: #ef4444; border: none;">Sim, Excluir</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="toast" class="toast">Aviso</div>
 
     <script src="script.js"></script>
@@ -359,38 +417,6 @@
             }
             // Chama a busca original do seu sistema
             if (typeof filtrarClientes === 'function') filtrarClientes(); 
-        }
-
-        // --- 2. Atualizar Botão de Disparo ---
-        function atualizarContadorFlex() {
-            const checkboxes = document.querySelectorAll('.check-cliente:checked');
-            const btn = document.getElementById('btn-flex-disparo');
-            const qtd = checkboxes.length;
-            
-            if (qtd > 0 && document.getElementById('check-all').checked === false) {
-                // Se não for o header checkado sozinho
-                btn.classList.remove('hidden-force');
-                btn.innerHTML = `<i class="fab fa-whatsapp"></i> Disparar Oferta (${qtd})`;
-
-                if(qtd > 5) {
-                    btn.style.backgroundColor = '#333'; 
-                    btn.innerHTML = `<i class="fas fa-hand-paper"></i> Máximo 5! (${qtd})`;
-                    btn.disabled = true;
-                } else {
-                    btn.style.backgroundColor = '#ef4444';
-                    btn.disabled = false;
-                }
-            } else {
-                if (qtd === 0) btn.classList.add('hidden-force');
-            }
-        }
-
-        function selecionarTodos(source) {
-            const checkboxes = document.querySelectorAll('#tabela-clientes-base .check-cliente');
-            checkboxes.forEach(cb => {
-                cb.checked = source.checked;
-            });
-            atualizarContadorFlex();
         }
 
         // --- 3. Enviar Mensagem em Massa (Opção A) ---

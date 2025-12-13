@@ -289,6 +289,7 @@ async function carregarTabelaClientes(termoBusca = "") {
                     <tr>
                         <td style="text-align: center; vertical-align: middle;">
                              <input type="checkbox" class="check-cliente" 
+                                   value="${c.id}"
                                    data-nome="${nomeSeguro}" 
                                    data-tel="${telefoneSeguro}" 
                                    onchange="atualizarContadorFlex()">
@@ -296,7 +297,10 @@ async function carregarTabelaClientes(termoBusca = "") {
                         <td><strong>${c.nome}</strong></td>
                         <td>${c.endereco || '-'}</td>
                         <td>${dataShow}</td>
-                        <td><button class="btn-hist" onclick="abrirHistorico(${c.id})">Ver</button></td>
+                        <td>
+                            <button class="btn-hist" onclick="abrirHistorico(${c.id})">Ver</button>
+                            <button class="btn-delete-row" onclick="abrirModalExclusao(${c.id})" title="Excluir"><i class="fas fa-trash"></i></button>
+                        </td>
                     </tr>`;
             });
         }
@@ -397,17 +401,31 @@ window.verificarFlex = (texto) => {
 }
 
 window.atualizarContadorFlex = () => {
-    const checkboxes = document.querySelectorAll('.check-cliente:checked');
-    const btn = document.getElementById('btn-flex-disparo');
-    const clientesSelecionados = Array.from(checkboxes).filter(cb => cb.id !== 'check-all');
-    const qtd = clientesSelecionados.length;
+    const checkboxes = document.querySelectorAll('#tabela-clientes-base .check-cliente:checked');
+    const qtd = checkboxes.length;
     
-    if (qtd > 0) {
-        btn.classList.remove('hidden-force');
-        btn.innerHTML = `<i class="fab fa-whatsapp"></i> Disparar Oferta (${qtd})`;
-        if(qtd > 5) { btn.style.backgroundColor = '#333'; btn.innerHTML = `Máximo 5! (${qtd})`; btn.disabled = true; } 
-        else { btn.style.backgroundColor = '#ef4444'; btn.disabled = false; }
-    } else { btn.classList.add('hidden-force'); }
+    // --- Botão Flex (Oferta) ---
+    const btnFlex = document.getElementById('btn-flex-disparo');
+    if (btnFlex) {
+        if (qtd > 0 && !document.getElementById('check-all').checked) {
+            btnFlex.classList.remove('hidden-force');
+            btnFlex.innerHTML = `<i class="fab fa-whatsapp"></i> Disparar Oferta (${qtd})`;
+            if(qtd > 5) { btnFlex.style.backgroundColor = '#333'; btnFlex.innerHTML = `Máximo 5! (${qtd})`; btnFlex.disabled = true; } 
+            else { btnFlex.style.backgroundColor = '#ef4444'; btnFlex.disabled = false; }
+        } else { btnFlex.classList.add('hidden-force'); }
+    }
+
+    // --- Botão Excluir ---
+    const btnExcluir = document.getElementById('btn-excluir-massa');
+    const lblExcluir = document.getElementById('lbl-qtd-excluir');
+    if (btnExcluir) {
+        if (qtd > 0) {
+            btnExcluir.classList.remove('hidden-force');
+            if(lblExcluir) lblExcluir.innerText = qtd;
+        } else {
+            btnExcluir.classList.add('hidden-force');
+        }
+    }
 }
 
 window.selecionarTodos = (source) => {
@@ -510,3 +528,46 @@ window.gerarRecibo = () => { document.getElementById('print-nome').innerText = d
 async function atualizarTotalClientes() { const { count } = await _supabase.from('clientes').select('*', { count: 'exact', head: true }); const el = document.getElementById('kpi-total-clientes'); if(el) el.innerText = count; }
 window.carregarLeads = carregarLeads; window.atenderAgendamento = atenderAgendamento;
 window.autoPreencherDados = function() { const n = document.getElementById('venda-nome').value; const c = clientes.find(x => x.nome.toLowerCase() === n.toLowerCase()); if (c) { document.getElementById('venda-tel').value = c.telefone||''; document.getElementById('venda-endereco').value = c.endereco||''; showToast("Dados encontrados!", "blue"); } }
+
+// --- FUNÇÕES DE EXCLUSÃO EM MASSA ---
+let idExclusaoTemp = null;
+
+window.abrirModalExclusao = (id = null) => {
+    idExclusaoTemp = id;
+    const modal = document.getElementById('modal-excluir');
+    const p = modal.querySelector('.modal-body p');
+    
+    if (id) {
+        p.innerText = "Tem certeza que deseja excluir este cliente permanentemente?";
+    } else {
+        const qtd = document.querySelectorAll('#tabela-clientes-base .check-cliente:checked').length;
+        p.innerText = `Tem certeza que deseja excluir os ${qtd} clientes selecionados?`;
+    }
+    modal.classList.remove('hidden');
+}
+
+window.confirmarExclusao = async () => {
+    let ids = [];
+    if (idExclusaoTemp) ids = [idExclusaoTemp];
+    else ids = Array.from(document.querySelectorAll('#tabela-clientes-base .check-cliente:checked')).map(cb => cb.value);
+
+    if (ids.length === 0) return;
+
+    const btn = document.querySelector('#modal-excluir .btn-primary');
+    if(btn) { btn.innerText = "Excluindo..."; btn.disabled = true; }
+
+    const { error } = await _supabase.from('clientes').delete().in('id', ids);
+
+    if (error) {
+        alert("Erro ao excluir: " + error.message);
+    } else {
+        showToast(`${ids.length} cliente(s) excluído(s).`);
+        fecharModal('modal-excluir');
+        await carregarDadosDoBanco(); // Atualiza KPIs
+        await carregarTabelaClientes(); // Atualiza Tabela
+        document.getElementById('check-all').checked = false;
+    }
+    
+    if(btn) { btn.innerText = "Sim, Excluir"; btn.disabled = false; }
+    atualizarContadorFlex();
+}
